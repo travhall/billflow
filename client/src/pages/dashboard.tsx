@@ -75,29 +75,46 @@ export default function Dashboard() {
     const currentMonthStart = startOfMonth(today);
 
     const getStatus = (bill: Bill) => {
-      let dueDate = setDate(currentMonthStart, bill.dueDay);
+      // Find the most recent payment for this bill
+      const billPayments = payments
+        .filter(p => p.billId === bill.id)
+        .sort((a, b) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime());
+
+      const latestPayment = billPayments[0];
+      
+      // Calculate current period's expected due date
+      let currentPeriodDueDate = setDate(currentMonthStart, bill.dueDay);
       if (bill.frequency === "yearly" && bill.dueMonth) {
-        dueDate = setMonth(setDate(new Date(today.getFullYear(), 0, 1), bill.dueDay), bill.dueMonth - 1);
+        currentPeriodDueDate = setMonth(setDate(new Date(today.getFullYear(), 0, 1), bill.dueDay), bill.dueMonth - 1);
       }
 
-      const payment = payments.find(p => 
-        p.billId === bill.id && 
-        isSameMonth(parseISO(p.dueDate as unknown as string), dueDate) && 
-        isSameYear(parseISO(p.dueDate as unknown as string), dueDate)
-      );
-
-      let status: "paid" | "pending" | "overdue" = "pending";
-      let amount = bill.defaultAmount;
-      let paymentId = payment?.id;
-
-      if (payment) {
-        status = "paid";
-        amount = payment.amount;
-      } else if (isBefore(dueDate, today)) {
-        status = "overdue";
+      // If no payment exists at all, use current period's due date
+      if (!latestPayment) {
+        const status = isBefore(currentPeriodDueDate, today) ? "overdue" : "pending";
+        return { status, dueDate: currentPeriodDueDate, amount: bill.defaultAmount, paymentId: undefined };
       }
 
-      return { status, dueDate, amount, paymentId };
+      // If latest payment is paid, we show it until user clicks "Next Cycle"
+      // or if it's already for a future date, we show that future date
+      const latestDueDate = parseISO(latestPayment.dueDate as unknown as string);
+      
+      if (latestPayment.status === "paid") {
+        return { 
+          status: "paid" as const, 
+          dueDate: latestDueDate, 
+          amount: latestPayment.amount, 
+          paymentId: latestPayment.id 
+        };
+      }
+
+      // If it's pending/overdue
+      const status = isBefore(latestDueDate, today) ? "overdue" : "pending";
+      return { 
+        status, 
+        dueDate: latestDueDate, 
+        amount: latestPayment.amount, 
+        paymentId: latestPayment.id 
+      };
     };
 
     const allBillStatuses = bills.filter(b => !b.archived).map(bill => ({
