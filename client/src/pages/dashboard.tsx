@@ -22,10 +22,29 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useMarkPaidDialog } from "@/components/mark-paid-dialog";
 
+import { useState } from "react";
+import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+
+type SortConfig = {
+  key: string;
+  direction: 'asc' | 'desc';
+} | null;
+
 export default function Dashboard() {
   const { data: bills, isLoading: billsLoading } = useBills();
   const { data: payments, isLoading: paymentsLoading } = usePayments();
   const { openDialog } = useMarkPaidDialog();
+  const [sortConfig, setSortConfig] = useState<SortConfig>(null);
+
+  const handleSort = (key: string) => {
+    setSortConfig(prev => {
+      if (prev?.key === key) {
+        if (prev.direction === 'asc') return { key, direction: 'desc' };
+        return null;
+      }
+      return { key, direction: 'asc' };
+    });
+  };
 
   const processedData = useMemo(() => {
     if (!bills || !payments) return null;
@@ -63,6 +82,40 @@ export default function Dashboard() {
       ...getStatus(bill)
     }));
 
+    const sortData = (data: any[]) => {
+      if (!sortConfig) return data;
+      return [...data].sort((a, b) => {
+        let valA, valB;
+        switch (sortConfig.key) {
+          case 'name':
+            valA = a.bill.name.toLowerCase();
+            valB = b.bill.name.toLowerCase();
+            break;
+          case 'category':
+            valA = a.bill.category.toLowerCase();
+            valB = b.bill.category.toLowerCase();
+            break;
+          case 'date':
+            valA = a.dueDate.getTime();
+            valB = b.dueDate.getTime();
+            break;
+          case 'amount':
+            valA = Number(a.amount);
+            valB = Number(b.amount);
+            break;
+          case 'status':
+            valA = a.status;
+            valB = b.status;
+            break;
+          default:
+            return 0;
+        }
+        if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    };
+
     const monthlyBillStatuses = allBillStatuses.filter(item => 
       item.bill.frequency === "monthly" || 
       (item.bill.frequency === "yearly" && item.bill.dueMonth === (today.getMonth() + 1))
@@ -81,6 +134,7 @@ export default function Dashboard() {
       .reduce((acc, item) => acc + Number(item.bill.defaultAmount), 0);
     const overdueCount = monthlyBillStatuses.filter(item => item.status === "overdue").length;
 
+    // Default sorts then apply user sort
     monthlyBillStatuses.sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
     annualBillStatuses.sort((a, b) => {
       const aMonth = a.bill.dueMonth || 0;
@@ -90,14 +144,14 @@ export default function Dashboard() {
     });
 
     return {
-      monthlyBillStatuses,
-      annualBillStatuses,
+      monthlyBillStatuses: sortData(monthlyBillStatuses),
+      annualBillStatuses: sortData(annualBillStatuses),
       totalDue,
       totalPaid,
       totalPending,
       overdueCount
     };
-  }, [bills, payments]);
+  }, [bills, payments, sortConfig]);
 
   if (billsLoading || paymentsLoading) {
     return (
@@ -112,6 +166,11 @@ export default function Dashboard() {
 
   if (!processedData) return null;
 
+  const SortIcon = ({ column }: { column: string }) => {
+    if (sortConfig?.key !== column) return <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />;
+    return sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />;
+  };
+
   const BillTable = ({ items, title }: { items: any[], title: string }) => (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mb-8">
       <div className="px-6 py-4 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
@@ -120,11 +179,31 @@ export default function Dashboard() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="pl-6">Bill Name</TableHead>
-            <TableHead>Category</TableHead>
-            <TableHead>Due Date</TableHead>
-            <TableHead>Amount</TableHead>
-            <TableHead>Status</TableHead>
+            <TableHead className="pl-6 cursor-pointer hover:bg-slate-100/50 transition-colors group" onClick={() => handleSort('name')}>
+              <div className="flex items-center">
+                Bill Name <SortIcon column="name" />
+              </div>
+            </TableHead>
+            <TableHead className="cursor-pointer hover:bg-slate-100/50 transition-colors group" onClick={() => handleSort('category')}>
+              <div className="flex items-center">
+                Category <SortIcon column="category" />
+              </div>
+            </TableHead>
+            <TableHead className="cursor-pointer hover:bg-slate-100/50 transition-colors group" onClick={() => handleSort('date')}>
+              <div className="flex items-center">
+                Due Date <SortIcon column="date" />
+              </div>
+            </TableHead>
+            <TableHead className="cursor-pointer hover:bg-slate-100/50 transition-colors group" onClick={() => handleSort('amount')}>
+              <div className="flex items-center">
+                Amount <SortIcon column="amount" />
+              </div>
+            </TableHead>
+            <TableHead className="cursor-pointer hover:bg-slate-100/50 transition-colors group" onClick={() => handleSort('status')}>
+              <div className="flex items-center">
+                Status <SortIcon column="status" />
+              </div>
+            </TableHead>
             <TableHead className="text-right pr-6">Actions</TableHead>
           </TableRow>
         </TableHeader>
