@@ -1,38 +1,70 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import { db } from "./db";
+import {
+  bills, payments,
+  type Bill, type InsertBill, type Payment, type InsertPayment,
+  type UpdateBillRequest, type UpdatePaymentRequest
+} from "@shared/schema";
+import { eq, desc, and, gte, lte } from "drizzle-orm";
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  getBills(): Promise<Bill[]>;
+  getBill(id: number): Promise<Bill | undefined>;
+  createBill(bill: InsertBill): Promise<Bill>;
+  updateBill(id: number, updates: UpdateBillRequest): Promise<Bill>;
+  deleteBill(id: number): Promise<void>;
+
+  getPayments(): Promise<Payment[]>;
+  getPaymentsByBill(billId: number): Promise<Payment[]>;
+  createPayment(payment: InsertPayment): Promise<Payment>;
+  updatePayment(id: number, updates: UpdatePaymentRequest): Promise<Payment>;
+  deletePayment(id: number): Promise<void>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
+export class DatabaseStorage implements IStorage {
+  async getBills(): Promise<Bill[]> {
+    return await db.select().from(bills).where(eq(bills.archived, false));
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+  async getBill(id: number): Promise<Bill | undefined> {
+    const [bill] = await db.select().from(bills).where(eq(bills.id, id));
+    return bill;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+  async createBill(bill: InsertBill): Promise<Bill> {
+    const [newBill] = await db.insert(bills).values(bill).returning();
+    return newBill;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+  async updateBill(id: number, updates: UpdateBillRequest): Promise<Bill> {
+    const [updated] = await db.update(bills).set(updates).where(eq(bills.id, id)).returning();
+    return updated;
+  }
+
+  async deleteBill(id: number): Promise<void> {
+    await db.update(bills).set({ archived: true }).where(eq(bills.id, id));
+  }
+
+  async getPayments(): Promise<Payment[]> {
+    return await db.select().from(payments).orderBy(desc(payments.dueDate));
+  }
+
+  async getPaymentsByBill(billId: number): Promise<Payment[]> {
+    return await db.select().from(payments).where(eq(payments.billId, billId)).orderBy(desc(payments.dueDate));
+  }
+
+  async createPayment(payment: InsertPayment): Promise<Payment> {
+    const [newPayment] = await db.insert(payments).values(payment).returning();
+    return newPayment;
+  }
+
+  async updatePayment(id: number, updates: UpdatePaymentRequest): Promise<Payment> {
+    const [updated] = await db.update(payments).set(updates).where(eq(payments.id, id)).returning();
+    return updated;
+  }
+
+  async deletePayment(id: number): Promise<void> {
+    await db.delete(payments).where(eq(payments.id, id));
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();

@@ -1,18 +1,51 @@
-import { sql } from "drizzle-orm";
-import { pgTable, text, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, numeric } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+export const bills = pgTable("bills", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  category: text("category").notNull(),
+  defaultAmount: numeric("default_amount").notNull(), // Use string for decimals
+  isVariable: boolean("is_variable").default(false).notNull(),
+  frequency: text("frequency", { enum: ["monthly", "yearly"] }).notNull(),
+  dueDay: integer("due_day").notNull(), // 1-31
+  dueMonth: integer("due_month"), // 1-12, used for yearly along with dueDay
+  archived: boolean("archived").default(false).notNull(),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
+export const payments = pgTable("payments", {
+  id: serial("id").primaryKey(),
+  billId: integer("bill_id").notNull(),
+  amount: numeric("amount").notNull(),
+  dueDate: timestamp("due_date").notNull(),
+  paidDate: timestamp("paid_date"),
+  status: text("status", { enum: ["paid", "pending", "overdue"] }).default("pending").notNull(),
+  notes: text("notes"),
 });
 
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
+export const billsRelations = relations(bills, ({ many }) => ({
+  payments: many(payments),
+}));
+
+export const paymentsRelations = relations(payments, ({ one }) => ({
+  bill: one(bills, {
+    fields: [payments.billId],
+    references: [bills.id],
+  }),
+}));
+
+export const insertBillSchema = createInsertSchema(bills).omit({ id: true });
+export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true });
+
+export type Bill = typeof bills.$inferSelect;
+export type InsertBill = z.infer<typeof insertBillSchema>;
+export type Payment = typeof payments.$inferSelect;
+export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+
+// Request types
+export type CreateBillRequest = InsertBill;
+export type UpdateBillRequest = Partial<InsertBill>;
+export type CreatePaymentRequest = InsertPayment;
+export type UpdatePaymentRequest = Partial<InsertPayment>;
