@@ -3,9 +3,12 @@ import { usePayments } from "@/hooks/use-payments";
 import { Layout } from "@/components/layout";
 import { StatsCards } from "@/components/stats-cards";
 import { CreateBillDialog } from "@/components/create-bill-dialog";
-import { MarkPaidDialog } from "@/components/mark-paid-dialog";
+import { MarkPaidDialog, useMarkPaidDialog } from "@/components/mark-paid-dialog";
 import { EditBillDialog } from "@/components/edit-bill-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { clsx } from "clsx";
 import { type Bill } from "@shared/schema";
 import { startOfMonth, endOfMonth, setDate, setMonth, isSameMonth, isSameYear, parseISO, isBefore, startOfDay, format } from "date-fns";
 import { useMemo } from "react";
@@ -18,9 +21,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { useMarkPaidDialog } from "@/components/mark-paid-dialog";
+import { Trash2, Edit2 } from "lucide-react";
+import { useDeleteBill } from "@/hooks/use-bills";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 import { useState } from "react";
 import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
@@ -34,6 +37,7 @@ export default function Dashboard() {
   const { data: bills, isLoading: billsLoading } = useBills();
   const { data: payments, isLoading: paymentsLoading } = usePayments();
   const { openDialog } = useMarkPaidDialog();
+  const deleteBill = useDeleteBill();
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
 
   const handleSort = (key: string) => {
@@ -179,81 +183,110 @@ export default function Dashboard() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="pl-6 cursor-pointer hover:bg-slate-100/50 transition-colors group" onClick={() => handleSort('name')}>
+            <TableHead className="pl-6 cursor-pointer hover:bg-muted/50 transition-colors group" onClick={() => handleSort('name')}>
               <div className="flex items-center">
                 Bill Name <SortIcon column="name" />
               </div>
             </TableHead>
-            <TableHead className="cursor-pointer hover:bg-slate-100/50 transition-colors group" onClick={() => handleSort('category')}>
+            <TableHead className="cursor-pointer hover:bg-muted/50 transition-colors group" onClick={() => handleSort('category')}>
               <div className="flex items-center">
                 Category <SortIcon column="category" />
               </div>
             </TableHead>
-            <TableHead className="cursor-pointer hover:bg-slate-100/50 transition-colors group" onClick={() => handleSort('date')}>
+            <TableHead className="cursor-pointer hover:bg-muted/50 transition-colors group" onClick={() => handleSort('date')}>
               <div className="flex items-center">
                 Due Date <SortIcon column="date" />
               </div>
             </TableHead>
-            <TableHead className="cursor-pointer hover:bg-slate-100/50 transition-colors group" onClick={() => handleSort('amount')}>
+            <TableHead className="cursor-pointer hover:bg-muted/50 transition-colors group" onClick={() => handleSort('amount')}>
               <div className="flex items-center">
                 Amount <SortIcon column="amount" />
               </div>
             </TableHead>
-            <TableHead className="cursor-pointer hover:bg-slate-100/50 transition-colors group" onClick={() => handleSort('status')}>
+            <TableHead className="cursor-pointer hover:bg-muted/50 transition-colors group" onClick={() => handleSort('status')}>
               <div className="flex items-center">
                 Status <SortIcon column="status" />
               </div>
             </TableHead>
-            <TableHead className="text-right pr-6">Actions</TableHead>
+            <TableHead className="text-right pr-6 min-w-[140px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {items.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} className="h-24 text-center text-slate-500">
+              <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                 No bills found
               </TableCell>
             </TableRow>
           ) : (
             items.map((item) => (
-              <TableRow key={item.bill.id} className="hover:bg-slate-50/50 transition-colors">
-                <TableCell className="pl-6 font-medium text-slate-900">
+              <TableRow key={item.bill.id} className="group hover:bg-muted/20 transition-colors border-border/50">
+                <TableCell className="pl-6 font-medium text-foreground">
                   {item.bill.name}
                 </TableCell>
                 <TableCell>
-                  <Badge variant="outline" className="font-normal text-slate-600 bg-slate-50">
+                  <Badge variant="outline" className="font-normal text-muted-foreground bg-background border-border">
                     {item.bill.category}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-slate-600">
+                <TableCell className="text-muted-foreground">
                   {format(item.dueDate, item.bill.frequency === "yearly" ? "MMM d, yyyy" : "MMM d")}
                 </TableCell>
-                <TableCell className="font-display font-bold text-slate-900">
+                <TableCell className="font-display font-bold text-foreground">
                   ${Number(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </TableCell>
                 <TableCell>
                   <Badge 
-                    className={
-                      item.status === "paid" ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
-                      item.status === "overdue" ? "bg-red-50 text-red-700 border-red-100" :
-                      "bg-amber-50 text-amber-700 border-amber-100"
-                    }
+                    className={clsx(
+                      "capitalize font-semibold",
+                      item.status === "paid" ? "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-emerald-500/20" :
+                      item.status === "overdue" ? "bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 border-rose-500/20" :
+                      "bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border-amber-500/20"
+                    )}
+                    variant="outline"
                   >
-                    {item.status.toUpperCase()}
+                    {item.status}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-right pr-6 space-x-2">
-                  <EditBillDialog bill={item.bill} />
-                  {item.status !== "paid" && (
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      className="h-8 rounded-full text-xs font-semibold"
-                      onClick={() => openDialog(item.bill, item.dueDate)}
-                    >
-                      Mark Paid
-                    </Button>
-                  )}
+                <TableCell className="text-right pr-6">
+                  <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive no-default-hover-elevate">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent className="bg-card border-border">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Bill</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete "{item.bill.name}"? This will also remove its payment history.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel className="bg-background border-border">Cancel</AlertDialogCancel>
+                          <AlertDialogAction 
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={() => deleteBill.mutate(item.bill.id)}
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+
+                    <EditBillDialog bill={item.bill} />
+
+                    {item.status !== "paid" && (
+                      <Button 
+                        size="sm"
+                        onClick={() => openDialog(item.bill, item.dueDate)}
+                        className="bg-primary text-primary-foreground hover-elevate shadow-sm h-8 rounded-lg text-xs font-semibold px-3"
+                      >
+                        Mark Paid
+                      </Button>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ))
@@ -272,8 +305,8 @@ export default function Dashboard() {
       >
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-display font-bold text-slate-900">Dashboard</h1>
-            <p className="text-slate-500">Overview of your bills for {format(new Date(), 'MMMM yyyy')}</p>
+            <h1 className="text-3xl font-display font-bold text-foreground">Dashboard</h1>
+            <p className="text-muted-foreground">Overview of your bills for {format(new Date(), 'MMMM yyyy')}</p>
           </div>
           <CreateBillDialog />
         </div>

@@ -14,11 +14,11 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <SidebarProvider style={style as React.CSSProperties}>
-      <div className="flex min-h-screen w-full bg-background font-sans">
+      <div className="flex min-h-screen w-full bg-background font-sans transition-colors duration-300">
         <AppSidebar />
         
-        <div className="flex flex-col flex-1 min-w-0 bg-background text-foreground transition-colors duration-300">
-          <header className="flex items-center justify-between p-2 border-b border-border bg-background/50 backdrop-blur-sm sticky top-0 z-40">
+        <div className="flex flex-col flex-1 min-w-0 bg-background text-foreground">
+          <header className="flex items-center justify-between p-2 border-b border-border bg-background/50 backdrop-blur-sm sticky top-0 z-50">
             <SidebarTrigger className="h-9 w-9" />
             <div className="flex items-center gap-2">
               <ThemeToggle />
