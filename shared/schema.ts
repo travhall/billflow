@@ -37,7 +37,10 @@ export const paymentsRelations = relations(payments, ({ one }) => ({
 }));
 
 export const insertBillSchema = createInsertSchema(bills).omit({ id: true });
-export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true });
+export const insertPaymentSchema = createInsertSchema(payments, {
+  dueDate: z.coerce.date(),
+  paidDate: z.coerce.date(),
+}).omit({ id: true });
 
 export type Bill = typeof bills.$inferSelect;
 export type InsertBill = z.infer<typeof insertBillSchema>;
