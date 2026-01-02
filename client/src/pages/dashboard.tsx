@@ -24,6 +24,7 @@ import {
 import { Trash2, Edit2 } from "lucide-react";
 import { useDeleteBill } from "@/hooks/use-bills";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { formatCurrency } from "@/lib/utils";
 
 import { useState } from "react";
 import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
@@ -233,7 +234,7 @@ export default function Dashboard() {
                   {format(item.dueDate, item.bill.frequency === "yearly" ? "MMM d, yyyy" : "MMM d")}
                 </TableCell>
                 <TableCell className="font-display font-bold text-foreground">
-                  ${Number(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  {formatCurrency(Number(item.amount))}
                 </TableCell>
                 <TableCell>
                   <Badge 
