@@ -3,7 +3,7 @@ import { format, isPast, parseISO } from "date-fns";
 import { Calendar, Check, AlertCircle, Clock, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { clsx } from "clsx";
-import { useMarkPaidDialog } from "./mark-paid-dialog";
+import { useMarkPaidDialog } from "@/components/mark-paid-dialog";
 
 interface BillCardProps {
   bill: Bill;

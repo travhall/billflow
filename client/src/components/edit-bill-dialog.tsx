@@ -172,7 +172,14 @@ export function EditBillDialog({ bill, trigger }: EditBillDialogProps) {
                   <FormItem>
                     <FormLabel>Due Month (1-12)</FormLabel>
                     <FormControl>
-                      <Input type="number" min="1" max="12" {...field} onChange={e => field.onChange(parseInt(e.target.value))} />
+                      <Input 
+                      type="number" 
+                      min="1" 
+                      max="12" 
+                      {...field} 
+                      value={field.value ?? ""} 
+                      onChange={e => field.onChange(e.target.value === "" ? null : parseInt(e.target.value))} 
+                    />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
