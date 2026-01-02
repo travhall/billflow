@@ -18,6 +18,7 @@ export interface IStorage {
   createPayment(payment: InsertPayment): Promise<Payment>;
   updatePayment(id: number, updates: UpdatePaymentRequest): Promise<Payment>;
   deletePayment(id: number): Promise<void>;
+  resetPayment(id: number): Promise<Payment>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -64,6 +65,34 @@ export class DatabaseStorage implements IStorage {
 
   async deletePayment(id: number): Promise<void> {
     await db.delete(payments).where(eq(payments.id, id));
+  }
+
+  async resetPayment(id: number): Promise<Payment> {
+    const [payment] = await db.select().from(payments).where(eq(payments.id, id));
+    if (!payment) throw new Error("Payment not found");
+
+    const [bill] = await db.select().from(bills).where(eq(bills.id, payment.billId));
+    if (!bill) throw new Error("Bill not found");
+
+    const currentDueDate = new Date(payment.dueDate);
+    let nextDueDate: Date;
+
+    if (bill.frequency === "monthly") {
+      nextDueDate = new Date(currentDueDate);
+      nextDueDate.setMonth(nextDueDate.getMonth() + 1);
+    } else {
+      nextDueDate = new Date(currentDueDate);
+      nextDueDate.setFullYear(nextDueDate.getFullYear() + 1);
+    }
+
+    const [newPayment] = await db.insert(payments).values({
+      billId: payment.billId,
+      amount: bill.defaultAmount,
+      dueDate: nextDueDate,
+      status: "pending",
+    }).returning();
+
+    return newPayment;
   }
 }
 

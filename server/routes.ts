@@ -115,5 +115,14 @@ export async function registerRoutes(
     res.status(204).send();
   });
 
+  app.post("/api/payments/:id/reset", async (req, res) => {
+    try {
+      const payment = await storage.resetPayment(Number(req.params.id));
+      res.json(payment);
+    } catch (err) {
+      res.status(404).json({ message: err instanceof Error ? err.message : "Unknown error" });
+    }
+  });
+
   return httpServer;
 }

@@ -21,8 +21,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Trash2, Edit2 } from "lucide-react";
+import { Trash2, Edit2, RotateCcw } from "lucide-react";
 import { useDeleteBill } from "@/hooks/use-bills";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { formatCurrency } from "@/lib/utils";
 
@@ -39,7 +42,21 @@ export default function Dashboard() {
   const { data: payments, isLoading: paymentsLoading } = usePayments();
   const { openDialog } = useMarkPaidDialog();
   const deleteBill = useDeleteBill();
+  const { toast } = useToast();
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
+
+  const resetMutation = useMutation({
+    mutationFn: async (paymentId: number) => {
+      await apiRequest("POST", `/api/payments/${paymentId}/reset`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/payments"] });
+      toast({
+        title: "Success",
+        description: "Billing cycle reset for the next period.",
+      });
+    },
+  });
 
   const handleSort = (key: string) => {
     setSortConfig(prev => {
@@ -71,6 +88,7 @@ export default function Dashboard() {
 
       let status: "paid" | "pending" | "overdue" = "pending";
       let amount = bill.defaultAmount;
+      let paymentId = payment?.id;
 
       if (payment) {
         status = "paid";
@@ -79,7 +97,7 @@ export default function Dashboard() {
         status = "overdue";
       }
 
-      return { status, dueDate, amount };
+      return { status, dueDate, amount, paymentId };
     };
 
     const allBillStatuses = bills.filter(b => !b.archived).map(bill => ({
@@ -277,6 +295,19 @@ export default function Dashboard() {
                     </AlertDialog>
 
                     <EditBillDialog bill={item.bill} />
+
+                    {item.status === "paid" && item.paymentId && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => resetMutation.mutate(item.paymentId!)}
+                        disabled={resetMutation.isPending}
+                        className="h-8 border-primary/20 hover:bg-primary/5 text-primary gap-2"
+                      >
+                        <RotateCcw className="h-3.5 w-3.5" />
+                        Next Cycle
+                      </Button>
+                    )}
 
                     {item.status !== "paid" && (
                       <Button 
