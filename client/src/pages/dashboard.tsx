@@ -172,9 +172,9 @@ export default function Dashboard() {
   };
 
   const BillTable = ({ items, title }: { items: any[], title: string }) => (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mb-8">
-      <div className="px-6 py-4 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
-        <h2 className="text-lg font-display font-bold text-slate-900">{title}</h2>
+    <div className="bg-card text-card-foreground rounded-2xl border border-border shadow-sm overflow-hidden mb-8 transition-colors">
+      <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-muted/30">
+        <h2 className="text-lg font-display font-bold">{title}</h2>
       </div>
       <Table>
         <TableHeader>
