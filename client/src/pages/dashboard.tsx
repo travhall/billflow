@@ -1,49 +1,44 @@
 import { useBills } from "@/hooks/use-bills";
 import { usePayments } from "@/hooks/use-payments";
 import { Layout } from "@/components/layout";
-import { BillCard } from "@/components/bill-card";
 import { StatsCards } from "@/components/stats-cards";
 import { CreateBillDialog } from "@/components/create-bill-dialog";
 import { MarkPaidDialog } from "@/components/mark-paid-dialog";
+import { EditBillDialog } from "@/components/edit-bill-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { type Bill, type Payment } from "@shared/schema";
-import { startOfMonth, endOfMonth, setDate, setMonth, isSameMonth, isSameYear, parseISO, isBefore, startOfDay } from "date-fns";
+import { type Bill } from "@shared/schema";
+import { startOfMonth, endOfMonth, setDate, setMonth, isSameMonth, isSameYear, parseISO, isBefore, startOfDay, format } from "date-fns";
 import { useMemo } from "react";
 import { motion } from "framer-motion";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useMarkPaidDialog } from "@/components/mark-paid-dialog";
 
 export default function Dashboard() {
   const { data: bills, isLoading: billsLoading } = useBills();
   const { data: payments, isLoading: paymentsLoading } = usePayments();
+  const { openDialog } = useMarkPaidDialog();
 
-  // Process data for dashboard
   const processedData = useMemo(() => {
     if (!bills || !payments) return null;
 
     const today = startOfDay(new Date());
     const currentMonthStart = startOfMonth(today);
-    const currentMonthEnd = endOfMonth(today);
 
-    // 1. Identify bills due this month
-    const monthlyBills = bills.filter(bill => {
-      if (bill.archived) return false;
-      if (bill.frequency === "monthly") return true;
-      if (bill.frequency === "yearly" && bill.dueMonth) {
-        // Only show yearly bills if they fall in current month
-        return bill.dueMonth === (today.getMonth() + 1);
-      }
-      return false;
-    });
-
-    // 2. Map bills to their status for the current period
-    const billStatuses = monthlyBills.map(bill => {
-      // Calculate due date for this specific bill in the current month
+    const getStatus = (bill: Bill) => {
       let dueDate = setDate(currentMonthStart, bill.dueDay);
-      if (bill.frequency === "yearly") {
-        dueDate = setMonth(setDate(new Date(today.getFullYear(), 0, 1), bill.dueDay), (bill.dueMonth || 1) - 1);
+      if (bill.frequency === "yearly" && bill.dueMonth) {
+        dueDate = setMonth(setDate(new Date(today.getFullYear(), 0, 1), bill.dueDay), bill.dueMonth - 1);
       }
 
-      // Find payment for this bill within reasonable range of this month
-      // Simple logic: Is there a payment for this billId with a dueDate in this month?
       const payment = payments.find(p => 
         p.billId === bill.id && 
         isSameMonth(parseISO(p.dueDate as unknown as string), dueDate) && 
@@ -60,38 +55,48 @@ export default function Dashboard() {
         status = "overdue";
       }
 
-      return {
-        bill,
-        status,
-        dueDate,
-        amount
-      };
-    });
+      return { status, dueDate, amount };
+    };
 
-    // 3. Calculate Aggregates
-    const totalDue = billStatuses.reduce((acc, item) => acc + Number(item.bill.defaultAmount), 0);
-    const totalPaid = billStatuses
+    const allBillStatuses = bills.filter(b => !b.archived).map(bill => ({
+      bill,
+      ...getStatus(bill)
+    }));
+
+    const monthlyBillStatuses = allBillStatuses.filter(item => 
+      item.bill.frequency === "monthly" || 
+      (item.bill.frequency === "yearly" && item.bill.dueMonth === (today.getMonth() + 1))
+    );
+
+    const annualBillStatuses = allBillStatuses.filter(item => 
+      item.bill.frequency === "yearly"
+    );
+
+    const totalDue = monthlyBillStatuses.reduce((acc, item) => acc + Number(item.bill.defaultAmount), 0);
+    const totalPaid = monthlyBillStatuses
       .filter(item => item.status === "paid")
       .reduce((acc, item) => acc + Number(item.amount), 0);
-    
-    // Total pending is what is LEFT to pay (from default amounts)
-    const totalPending = billStatuses
+    const totalPending = monthlyBillStatuses
       .filter(item => item.status !== "paid")
       .reduce((acc, item) => acc + Number(item.bill.defaultAmount), 0);
+    const overdueCount = monthlyBillStatuses.filter(item => item.status === "overdue").length;
 
-    const overdueCount = billStatuses.filter(item => item.status === "overdue").length;
-
-    // Sort by due date
-    billStatuses.sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
+    monthlyBillStatuses.sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
+    annualBillStatuses.sort((a, b) => {
+      const aMonth = a.bill.dueMonth || 0;
+      const bMonth = b.bill.dueMonth || 0;
+      if (aMonth !== bMonth) return aMonth - bMonth;
+      return a.bill.dueDay - b.bill.dueDay;
+    });
 
     return {
-      billStatuses,
+      monthlyBillStatuses,
+      annualBillStatuses,
       totalDue,
       totalPaid,
       totalPending,
       overdueCount
     };
-
   }, [bills, payments]);
 
   if (billsLoading || paymentsLoading) {
@@ -99,17 +104,85 @@ export default function Dashboard() {
       <Layout>
         <div className="space-y-6">
           <Skeleton className="h-48 w-full rounded-2xl" />
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3, 4, 5, 6].map(i => (
-              <Skeleton key={i} className="h-40 rounded-2xl" />
-            ))}
-          </div>
+          <Skeleton className="h-96 w-full rounded-2xl" />
         </div>
       </Layout>
     );
   }
 
   if (!processedData) return null;
+
+  const BillTable = ({ items, title }: { items: any[], title: string }) => (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mb-8">
+      <div className="px-6 py-4 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
+        <h2 className="text-lg font-display font-bold text-slate-900">{title}</h2>
+      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="pl-6">Bill Name</TableHead>
+            <TableHead>Category</TableHead>
+            <TableHead>Due Date</TableHead>
+            <TableHead>Amount</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="text-right pr-6">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {items.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={6} className="h-24 text-center text-slate-500">
+                No bills found
+              </TableCell>
+            </TableRow>
+          ) : (
+            items.map((item) => (
+              <TableRow key={item.bill.id} className="hover:bg-slate-50/50 transition-colors">
+                <TableCell className="pl-6 font-medium text-slate-900">
+                  {item.bill.name}
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline" className="font-normal text-slate-600 bg-slate-50">
+                    {item.bill.category}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-slate-600">
+                  {format(item.dueDate, item.bill.frequency === "yearly" ? "MMM d, yyyy" : "MMM d")}
+                </TableCell>
+                <TableCell className="font-display font-bold text-slate-900">
+                  ${Number(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                </TableCell>
+                <TableCell>
+                  <Badge 
+                    className={
+                      item.status === "paid" ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
+                      item.status === "overdue" ? "bg-red-50 text-red-700 border-red-100" :
+                      "bg-amber-50 text-amber-700 border-amber-100"
+                    }
+                  >
+                    {item.status.toUpperCase()}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right pr-6 space-x-2">
+                  <EditBillDialog bill={item.bill} />
+                  {item.status !== "paid" && (
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      className="h-8 rounded-full text-xs font-semibold"
+                      onClick={() => openDialog(item.bill, item.dueDate)}
+                    >
+                      Mark Paid
+                    </Button>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  );
 
   return (
     <Layout>
@@ -121,7 +194,7 @@ export default function Dashboard() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-display font-bold text-slate-900">Dashboard</h1>
-            <p className="text-slate-500">Overview of your bills for {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}</p>
+            <p className="text-slate-500">Overview of your bills for {format(new Date(), 'MMMM yyyy')}</p>
           </div>
           <CreateBillDialog />
         </div>
@@ -133,30 +206,9 @@ export default function Dashboard() {
           overdueCount={processedData.overdueCount}
         />
 
-        <div>
-          <h2 className="text-xl font-display font-bold text-slate-900 mb-4">Upcoming Bills</h2>
-          
-          {processedData.billStatuses.length === 0 ? (
-            <div className="bg-white border border-dashed border-slate-300 rounded-2xl p-12 text-center">
-              <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">🎉</span>
-              </div>
-              <h3 className="text-lg font-bold text-slate-900">No bills due this month</h3>
-              <p className="text-slate-500 max-w-sm mx-auto mt-1">You're all clear! Add a new bill to start tracking your expenses.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {processedData.billStatuses.map((item) => (
-                <BillCard 
-                  key={item.bill.id} 
-                  bill={item.bill} 
-                  status={item.status} 
-                  dueDate={item.dueDate}
-                  amount={item.amount}
-                />
-              ))}
-            </div>
-          )}
+        <div className="space-y-8">
+          <BillTable items={processedData.monthlyBillStatuses} title="Upcoming Monthly Bills" />
+          <BillTable items={processedData.annualBillStatuses} title="Annual Bills Overview" />
         </div>
       </motion.div>
       <MarkPaidDialog />
