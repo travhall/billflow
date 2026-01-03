@@ -19,6 +19,7 @@ export interface IStorage {
   updatePayment(id: number, updates: UpdatePaymentRequest): Promise<Payment>;
   deletePayment(id: number): Promise<void>;
   resetPayment(id: number): Promise<Payment>;
+  revertPayment(id: number): Promise<Payment>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -93,6 +94,14 @@ export class DatabaseStorage implements IStorage {
     }).returning();
 
     return newPayment;
+  }
+
+  async revertPayment(id: number): Promise<Payment> {
+    const [updated] = await db.update(payments)
+      .set({ status: "pending", paidDate: null })
+      .where(eq(payments.id, id))
+      .returning();
+    return updated;
   }
 }
 

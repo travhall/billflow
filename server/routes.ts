@@ -124,5 +124,14 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/payments/:id/revert", async (req, res) => {
+    try {
+      const payment = await storage.revertPayment(Number(req.params.id));
+      res.json(payment);
+    } catch (err) {
+      res.status(404).json({ message: err instanceof Error ? err.message : "Unknown error" });
+    }
+  });
+
   return httpServer;
 }

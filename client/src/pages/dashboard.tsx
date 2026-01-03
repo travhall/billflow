@@ -21,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Trash2, Edit2, RotateCcw } from "lucide-react";
+import { Trash2, Edit2, RotateCcw, Undo2 } from "lucide-react";
 import { useDeleteBill } from "@/hooks/use-bills";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -54,6 +54,19 @@ export default function Dashboard() {
       toast({
         title: "Success",
         description: "Billing cycle reset for the next period.",
+      });
+    },
+  });
+
+  const revertMutation = useMutation({
+    mutationFn: async (paymentId: number) => {
+      await apiRequest("POST", `/api/payments/${paymentId}/revert`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/payments"] });
+      toast({
+        title: "Reverted",
+        description: "Payment has been marked as pending again.",
       });
     },
   });
@@ -314,16 +327,28 @@ export default function Dashboard() {
                     <EditBillDialog bill={item.bill} />
 
                     {item.status === "paid" && item.paymentId && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => resetMutation.mutate(item.paymentId!)}
-                        disabled={resetMutation.isPending}
-                        className="h-8 border-primary/20 hover:bg-primary/5 text-primary gap-2"
-                      >
-                        <RotateCcw className="h-3.5 w-3.5" />
-                        Next Cycle
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => revertMutation.mutate(item.paymentId!)}
+                          disabled={revertMutation.isPending}
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground no-default-hover-elevate"
+                          title="Revert to Pending"
+                        >
+                          <Undo2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => resetMutation.mutate(item.paymentId!)}
+                          disabled={resetMutation.isPending}
+                          className="h-8 border-primary/20 hover:bg-primary/5 text-primary gap-2"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                          Next Cycle
+                        </Button>
+                      </div>
                     )}
 
                     {item.status !== "paid" && (
