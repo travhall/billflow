@@ -12,6 +12,8 @@ import { Plus } from "lucide-react";
 import { useState } from "react";
 import { z } from "zod";
 
+import { Checkbox } from "@/components/ui/checkbox";
+
 // Enhance schema for form validation
 const formSchema = insertBillSchema.extend({
   defaultAmount: z.string().min(1, "Amount is required"),
@@ -32,6 +34,7 @@ export function CreateBillDialog() {
       isVariable: false,
       frequency: "monthly",
       dueDay: 1,
+      isAutoPay: false,
       archived: false,
     },
   });
@@ -172,6 +175,27 @@ export function CreateBillDialog() {
                   )}
                 />
               )}
+
+              <FormField
+                control={form.control}
+                name="isAutoPay"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-xl border border-slate-200 p-4 bg-slate-50/50">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">Auto Pay</FormLabel>
+                      <div className="text-xs text-slate-500">
+                        Automatically reset cycle when due date passes
+                      </div>
+                    </div>
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={form.control}

@@ -12,6 +12,7 @@ export const bills = pgTable("bills", {
   frequency: text("frequency", { enum: ["monthly", "yearly"] }).notNull(),
   dueDay: integer("due_day").notNull(), // 1-31
   dueMonth: integer("due_month"), // 1-12, used for yearly along with dueDay
+  isAutoPay: boolean("is_auto_pay").default(false).notNull(),
   archived: boolean("archived").default(false).notNull(),
 });
 

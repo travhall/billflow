@@ -50,6 +50,7 @@ export function EditBillDialog({ bill, trigger }: EditBillDialogProps) {
       frequency: bill.frequency,
       dueDay: bill.dueDay,
       dueMonth: bill.dueMonth,
+      isAutoPay: bill.isAutoPay,
       archived: bill.archived,
     },
   });
@@ -186,6 +187,23 @@ export function EditBillDialog({ bill, trigger }: EditBillDialogProps) {
                 )}
               />
             )}
+            <FormField
+              control={form.control}
+              name="isAutoPay"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>Auto Pay</FormLabel>
+                  </div>
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="isVariable"

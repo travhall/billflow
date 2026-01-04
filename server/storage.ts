@@ -47,6 +47,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPayments(): Promise<Payment[]> {
+    const allPayments = await db.select().from(payments).orderBy(desc(payments.dueDate));
+    
+    // Auto-pay logic: check if any pending/overdue payments for auto-pay bills have passed their due date
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (const payment of allPayments) {
+      if (payment.status !== "paid" && new Date(payment.dueDate) < today) {
+        const [bill] = await db.select().from(bills).where(eq(bills.id, payment.billId));
+        if (bill && bill.isAutoPay) {
+          // Mark as paid and trigger next cycle
+          await db.update(payments)
+            .set({ status: "paid", paidDate: new Date() })
+            .where(eq(payments.id, payment.id));
+          
+          await this.resetPayment(payment.id);
+        }
+      }
+    }
+
     return await db.select().from(payments).orderBy(desc(payments.dueDate));
   }
 

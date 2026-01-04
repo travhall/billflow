@@ -271,7 +271,14 @@ export default function Dashboard() {
             items.map((item) => (
               <TableRow key={item.bill.id} className="group hover:bg-muted/20 transition-colors border-border/50">
                 <TableCell className="pl-6 font-medium text-foreground">
-                  {item.bill.name}
+                  <div className="flex items-center gap-2">
+                    {item.bill.name}
+                    {item.bill.isAutoPay && (
+                      <Badge variant="outline" className="h-5 text-[10px] bg-primary/5 text-primary border-primary/20">
+                        Auto
+                      </Badge>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell>
                   <Badge variant="outline" className="font-normal text-muted-foreground bg-background border-border">
