@@ -95,6 +95,16 @@ export default function Dashboard() {
 
       const latestPayment = billPayments[0];
       
+      // If latest payment exists and is paid, we show it as paid regardless of due date
+      if (latestPayment && latestPayment.status === "paid") {
+        return { 
+          status: "paid" as const, 
+          dueDate: parseISO(latestPayment.dueDate as unknown as string), 
+          amount: latestPayment.amount, 
+          paymentId: latestPayment.id 
+        };
+      }
+
       // Calculate current period's expected due date
       let currentPeriodDueDate = setDate(currentMonthStart, bill.dueDay);
       if (bill.frequency === "yearly" && bill.dueMonth) {
@@ -107,20 +117,8 @@ export default function Dashboard() {
         return { status, dueDate: currentPeriodDueDate, amount: bill.defaultAmount, paymentId: undefined };
       }
 
-      // If latest payment is paid, we show it until user clicks "Next Cycle"
-      // or if it's already for a future date, we show that future date
-      const latestDueDate = parseISO(latestPayment.dueDate as unknown as string);
-      
-      if (latestPayment.status === "paid") {
-        return { 
-          status: "paid" as const, 
-          dueDate: latestDueDate, 
-          amount: latestPayment.amount, 
-          paymentId: latestPayment.id 
-        };
-      }
-
       // If it's pending/overdue
+      const latestDueDate = parseISO(latestPayment.dueDate as unknown as string);
       const status = isBefore(latestDueDate, today) ? "overdue" : "pending";
       return { 
         status, 
