@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useState, useEffect } from "react";
 import { useCreatePayment } from "@/hooks/use-payments";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -35,12 +36,14 @@ export function MarkPaidDialog() {
 
   const [amount, setAmount] = useState("");
   const [paidDate, setPaidDate] = useState("");
+  const [resetCycle, setResetCycle] = useState(true);
   const [isPending, setIsPending] = useState(false);
 
   useEffect(() => {
     if (isOpen && bill) {
       setAmount(bill.defaultAmount);
       setPaidDate(new Date().toISOString().split('T')[0]);
+      setResetCycle(true);
     }
   }, [isOpen, bill]);
 
@@ -50,40 +53,52 @@ export function MarkPaidDialog() {
     e.preventDefault();
     if (!amount || !paidDate) return;
 
-    if (paymentId) {
-      // Update the existing pending payment record
-      setIsPending(true);
-      try {
+    setIsPending(true);
+    try {
+      let savedPaymentId: number;
+
+      if (paymentId) {
+        // Update the existing pending payment record
         await apiRequest("PUT", `/api/payments/${paymentId}`, {
           amount,
           paidDate: new Date(paidDate),
           status: "paid",
           notes: "",
         });
-        queryClient.invalidateQueries({ queryKey: ["/api/payments"] });
-        toast({ title: "Payment Recorded", description: "The bill has been marked as paid." });
-        closeDialog();
-      } catch {
-        toast({ title: "Error", description: "Failed to record payment", variant: "destructive" });
-      } finally {
-        setIsPending(false);
+        savedPaymentId = paymentId;
+      } else {
+        // No existing payment record — create a new one
+        const res = await apiRequest("POST", "/api/payments", {
+          billId: bill.id,
+          amount,
+          dueDate,
+          paidDate: new Date(paidDate),
+          status: "paid",
+          notes: "",
+        });
+        const created = await res.json();
+        savedPaymentId = created.id;
       }
-    } else {
-      // No existing payment record — create a new one
-      createPayment.mutate({
-        billId: bill.id,
-        amount,
-        dueDate,
-        paidDate: new Date(paidDate),
-        status: "paid",
-        notes: "",
-      }, {
-        onSuccess: () => closeDialog(),
+
+      // Optionally reset for next cycle
+      if (resetCycle) {
+        await apiRequest("POST", `/api/payments/${savedPaymentId}/reset`);
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["/api/payments"] });
+      toast({
+        title: "Payment Recorded",
+        description: resetCycle
+          ? "Bill marked as paid and reset for next cycle."
+          : "The bill has been marked as paid.",
       });
+      closeDialog();
+    } catch {
+      toast({ title: "Error", description: "Failed to record payment", variant: "destructive" });
+    } finally {
+      setIsPending(false);
     }
   };
-
-  const loading = isPending || createPayment.isPending;
 
   return (
     <Dialog open={isOpen} onOpenChange={closeDialog}>
@@ -122,14 +137,30 @@ export function MarkPaidDialog() {
             />
           </div>
 
-          <div className="pt-2 flex justify-end gap-2">
+          <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <Checkbox
+              id="reset-cycle"
+              checked={resetCycle}
+              onCheckedChange={(v) => setResetCycle(!!v)}
+            />
+            <div>
+              <label htmlFor="reset-cycle" className="text-sm font-medium text-slate-800 cursor-pointer">
+                Reset for next cycle
+              </label>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Automatically queue the next {bill.frequency === "yearly" ? "annual" : "monthly"} payment
+              </p>
+            </div>
+          </div>
+
+          <div className="pt-1 flex justify-end gap-2">
             <Button type="button" variant="ghost" onClick={closeDialog} className="rounded-xl">Cancel</Button>
             <Button
               type="submit"
               className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-lg shadow-emerald-600/20"
-              disabled={loading}
+              disabled={isPending}
             >
-              {loading ? "Saving..." : "Confirm Payment"}
+              {isPending ? "Saving..." : "Confirm Payment"}
             </Button>
           </div>
         </form>
