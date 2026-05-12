@@ -91,7 +91,14 @@ export default function Dashboard() {
       // Find the most recent payment for this bill
       const billPayments = payments
         .filter(p => p.billId === bill.id)
-        .sort((a, b) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime());
+        .sort((a, b) => {
+          const dateDiff = new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime();
+          if (dateDiff !== 0) return dateDiff;
+          // Tiebreak: paid before pending, then newest id first
+          if (a.status === "paid" && b.status !== "paid") return -1;
+          if (b.status === "paid" && a.status !== "paid") return 1;
+          return b.id - a.id;
+        });
 
       const latestPayment = billPayments[0];
       
@@ -359,7 +366,7 @@ export default function Dashboard() {
                     {item.status !== "paid" && (
                       <Button 
                         size="sm"
-                        onClick={() => openDialog(item.bill, item.dueDate)}
+                        onClick={() => openDialog(item.bill, item.dueDate, item.paymentId)}
                         className="bg-primary text-primary-foreground hover-elevate shadow-sm h-8 rounded-lg text-xs font-semibold px-3"
                       >
                         Mark Paid

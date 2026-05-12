@@ -6,14 +6,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState, useEffect } from "react";
 import { useCreatePayment } from "@/hooks/use-payments";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
-// Simple state management for the dialog
 interface MarkPaidState {
   isOpen: boolean;
   bill: Bill | null;
   dueDate: Date | null;
-  openDialog: (bill: Bill, dueDate: Date) => void;
+  paymentId: number | undefined;
+  openDialog: (bill: Bill, dueDate: Date, paymentId?: number) => void;
   closeDialog: () => void;
 }
 
@@ -21,16 +23,19 @@ export const useMarkPaidDialog = create<MarkPaidState>((set) => ({
   isOpen: false,
   bill: null,
   dueDate: null,
-  openDialog: (bill, dueDate) => set({ isOpen: true, bill, dueDate }),
-  closeDialog: () => set({ isOpen: false, bill: null, dueDate: null }),
+  paymentId: undefined,
+  openDialog: (bill, dueDate, paymentId) => set({ isOpen: true, bill, dueDate, paymentId }),
+  closeDialog: () => set({ isOpen: false, bill: null, dueDate: null, paymentId: undefined }),
 }));
 
 export function MarkPaidDialog() {
-  const { isOpen, bill, dueDate, closeDialog } = useMarkPaidDialog();
+  const { isOpen, bill, dueDate, paymentId, closeDialog } = useMarkPaidDialog();
   const createPayment = useCreatePayment();
-  
+  const { toast } = useToast();
+
   const [amount, setAmount] = useState("");
   const [paidDate, setPaidDate] = useState("");
+  const [isPending, setIsPending] = useState(false);
 
   useEffect(() => {
     if (isOpen && bill) {
@@ -41,21 +46,44 @@ export function MarkPaidDialog() {
 
   if (!bill || !dueDate) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || !paidDate) return;
 
-    createPayment.mutate({
-      billId: bill.id,
-      amount: amount,
-      dueDate: dueDate, // The original due date of the bill instance
-      paidDate: new Date(paidDate),
-      status: "paid",
-      notes: "",
-    }, {
-      onSuccess: () => closeDialog(),
-    });
+    if (paymentId) {
+      // Update the existing pending payment record
+      setIsPending(true);
+      try {
+        await apiRequest("PUT", `/api/payments/${paymentId}`, {
+          amount,
+          paidDate: new Date(paidDate),
+          status: "paid",
+          notes: "",
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/payments"] });
+        toast({ title: "Payment Recorded", description: "The bill has been marked as paid." });
+        closeDialog();
+      } catch {
+        toast({ title: "Error", description: "Failed to record payment", variant: "destructive" });
+      } finally {
+        setIsPending(false);
+      }
+    } else {
+      // No existing payment record — create a new one
+      createPayment.mutate({
+        billId: bill.id,
+        amount,
+        dueDate,
+        paidDate: new Date(paidDate),
+        status: "paid",
+        notes: "",
+      }, {
+        onSuccess: () => closeDialog(),
+      });
+    }
   };
+
+  const loading = isPending || createPayment.isPending;
 
   return (
     <Dialog open={isOpen} onOpenChange={closeDialog}>
@@ -79,7 +107,6 @@ export function MarkPaidDialog() {
                 className="pl-7 rounded-xl border-slate-200 focus:border-primary focus:ring-primary/10"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                readOnly={!bill.isVariable} // Only editable if variable? Actually users might want to edit always for partials, but let's stick to prompt logic mostly
               />
             </div>
           </div>
@@ -97,12 +124,12 @@ export function MarkPaidDialog() {
 
           <div className="pt-2 flex justify-end gap-2">
             <Button type="button" variant="ghost" onClick={closeDialog} className="rounded-xl">Cancel</Button>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-lg shadow-emerald-600/20"
-              disabled={createPayment.isPending}
+              disabled={loading}
             >
-              {createPayment.isPending ? "Saving..." : "Confirm Payment"}
+              {loading ? "Saving..." : "Confirm Payment"}
             </Button>
           </div>
         </form>
