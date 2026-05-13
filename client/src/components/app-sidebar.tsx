@@ -1,6 +1,6 @@
 import { Sidebar, SidebarContent, SidebarHeader, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, History, Wallet, ChevronLeft, ChevronRight } from "lucide-react";
+import { LayoutDashboard, History, Wallet, CalendarClock } from "lucide-react";
 import { clsx } from "clsx";
 
 export function AppSidebar() {
@@ -8,6 +8,7 @@ export function AppSidebar() {
 
   const navItems = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/upcoming", label: "Upcoming", icon: CalendarClock },
     { href: "/history", label: "History", icon: History },
   ];
 
