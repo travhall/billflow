@@ -46,6 +46,22 @@ function markNotifiedToday(key: string) {
   localStorage.setItem(key, new Date().toDateString());
 }
 
+export function sendTestNotification() {
+  if (!("Notification" in window)) {
+    alert("This browser does not support notifications.");
+    return;
+  }
+  if (Notification.permission !== "granted") {
+    alert("Notifications are not enabled. Open any bill's edit menu and click Enable under Payment Reminder first.");
+    return;
+  }
+  new Notification("🔔 BillFlow Test", {
+    body: "Notifications are working! You'll be reminded before bills are due.",
+    tag: "billflow-test",
+    icon: "/favicon.ico",
+  });
+}
+
 export function checkAndSendReminders(bills: Bill[], payments: Payment[]) {
   if (!("Notification" in window) || Notification.permission !== "granted") return;
 
