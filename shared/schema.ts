@@ -14,6 +14,7 @@ export const bills = pgTable("bills", {
   dueMonth: integer("due_month"), // 1-12, used for yearly along with dueDay
   isAutoPay: boolean("is_auto_pay").default(false).notNull(),
   archived: boolean("archived").default(false).notNull(),
+  reminderDays: integer("reminder_days"), // days before due date to send notification; null = no reminder
 });
 
 export const payments = pgTable("payments", {

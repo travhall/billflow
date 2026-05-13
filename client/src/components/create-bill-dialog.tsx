@@ -8,9 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { useCreateBill } from "@/hooks/use-bills";
-import { Plus } from "lucide-react";
+import { Plus, Bell } from "lucide-react";
 import { useState } from "react";
 import { z } from "zod";
+import { requestNotificationPermission, getNotificationPermission } from "@/lib/notifications";
 
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -19,10 +20,12 @@ const formSchema = insertBillSchema.extend({
   defaultAmount: z.string().min(1, "Amount is required"),
   dueDay: z.coerce.number().min(1).max(31),
   dueMonth: z.coerce.number().min(1).max(12).optional(),
+  reminderDays: z.number().nullable().optional(),
 });
 
 export function CreateBillDialog() {
   const [open, setOpen] = useState(false);
+  const [notifPermission, setNotifPermission] = useState(getNotificationPermission());
   const createBill = useCreateBill();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -36,10 +39,17 @@ export function CreateBillDialog() {
       dueDay: 1,
       isAutoPay: false,
       archived: false,
+      reminderDays: null,
     },
   });
 
   const frequency = form.watch("frequency");
+
+  async function enableReminders() {
+    const result = await requestNotificationPermission();
+    setNotifPermission(result);
+    if (result === "granted") form.setValue("reminderDays", 3);
+  }
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     createBill.mutate(values, {
@@ -217,6 +227,56 @@ export function CreateBillDialog() {
                   </FormItem>
                 )}
               />
+
+              {/* Reminder section */}
+              <div className="rounded-xl border border-slate-200 p-4 space-y-3 bg-slate-50/50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-slate-500" />
+                    <span className="text-sm font-medium text-slate-700">Payment Reminder</span>
+                  </div>
+                  {notifPermission !== "granted" && (
+                    <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={enableReminders}>
+                      <Bell className="w-3 h-3" /> Enable
+                    </Button>
+                  )}
+                </div>
+                {notifPermission === "granted" ? (
+                  <FormField
+                    control={form.control}
+                    name="reminderDays"
+                    render={({ field }) => (
+                      <FormItem>
+                        <Select
+                          onValueChange={(val) => field.onChange(val === "none" ? null : parseInt(val))}
+                          value={field.value === null || field.value === undefined ? "none" : String(field.value)}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200">
+                              <SelectValue placeholder="No reminder" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="none">No reminder</SelectItem>
+                            <SelectItem value="0">On the due date</SelectItem>
+                            <SelectItem value="1">1 day before</SelectItem>
+                            <SelectItem value="3">3 days before</SelectItem>
+                            <SelectItem value="5">5 days before</SelectItem>
+                            <SelectItem value="7">1 week before</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ) : (
+                  <p className="text-xs text-slate-500">
+                    {notifPermission === "denied"
+                      ? "Notifications are blocked. Allow them in your browser settings."
+                      : "Get notified before bills are due. Click Enable to allow notifications."}
+                  </p>
+                )}
+              </div>
 
               <div className="pt-2">
                 <Button 

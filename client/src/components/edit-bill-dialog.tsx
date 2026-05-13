@@ -29,7 +29,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Pencil } from "lucide-react";
+import { Pencil, Bell, BellOff } from "lucide-react";
+import { requestNotificationPermission, getNotificationPermission } from "@/lib/notifications";
 
 interface EditBillDialogProps {
   bill: Bill;
@@ -38,6 +39,7 @@ interface EditBillDialogProps {
 
 export function EditBillDialog({ bill, trigger }: EditBillDialogProps) {
   const [open, setOpen] = useState(false);
+  const [notifPermission, setNotifPermission] = useState(getNotificationPermission());
   const { toast } = useToast();
 
   const form = useForm({
@@ -52,8 +54,20 @@ export function EditBillDialog({ bill, trigger }: EditBillDialogProps) {
       dueMonth: bill.dueMonth,
       isAutoPay: bill.isAutoPay,
       archived: bill.archived,
+      reminderDays: bill.reminderDays ?? null,
     },
   });
+
+  async function enableReminders() {
+    const result = await requestNotificationPermission();
+    setNotifPermission(result);
+    if (result === "granted" && !form.getValues("reminderDays")) {
+      form.setValue("reminderDays", 3);
+    }
+    if (result === "denied") {
+      toast({ title: "Notifications blocked", description: "Enable notifications in your browser settings.", variant: "destructive" });
+    }
+  }
 
   const onSubmit = async (data: any) => {
     try {
@@ -221,6 +235,56 @@ export function EditBillDialog({ bill, trigger }: EditBillDialogProps) {
                 </FormItem>
               )}
             />
+            {/* Reminder section */}
+            <div className="rounded-xl border border-border p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Bell className="w-4 h-4 text-muted-foreground" />
+                  <FormLabel className="text-sm font-medium mb-0">Payment Reminder</FormLabel>
+                </div>
+                {notifPermission !== "granted" && (
+                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={enableReminders}>
+                    <Bell className="w-3 h-3" /> Enable
+                  </Button>
+                )}
+              </div>
+              {notifPermission === "granted" ? (
+                <FormField
+                  control={form.control}
+                  name="reminderDays"
+                  render={({ field }) => (
+                    <FormItem>
+                      <Select
+                        onValueChange={(val) => field.onChange(val === "none" ? null : parseInt(val))}
+                        value={field.value === null || field.value === undefined ? "none" : String(field.value)}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="h-9 text-sm">
+                            <SelectValue placeholder="No reminder" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">No reminder</SelectItem>
+                          <SelectItem value="0">On the due date</SelectItem>
+                          <SelectItem value="1">1 day before</SelectItem>
+                          <SelectItem value="3">3 days before</SelectItem>
+                          <SelectItem value="5">5 days before</SelectItem>
+                          <SelectItem value="7">1 week before</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  {notifPermission === "denied"
+                    ? "Notifications are blocked. Allow them in your browser settings."
+                    : "Enable browser notifications to get reminded before bills are due."}
+                </p>
+              )}
+            </div>
+
             <Button type="submit" className="w-full">Update Bill</Button>
           </form>
         </Form>

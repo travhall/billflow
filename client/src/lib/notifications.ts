@@ -1,0 +1,99 @@
+import { differenceInDays, parseISO, setDate, setMonth, startOfDay } from "date-fns";
+import type { Bill, Payment } from "@shared/schema";
+
+export type NotificationPermission = "granted" | "denied" | "default";
+
+export function getNotificationPermission(): NotificationPermission {
+  if (!("Notification" in window)) return "denied";
+  return Notification.permission as NotificationPermission;
+}
+
+export async function requestNotificationPermission(): Promise<NotificationPermission> {
+  if (!("Notification" in window)) return "denied";
+  if (Notification.permission === "granted") return "granted";
+  const result = await Notification.requestPermission();
+  return result as NotificationPermission;
+}
+
+function sendNotification(title: string, body: string, tag: string) {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  new Notification(title, {
+    body,
+    tag,
+    icon: "/favicon.ico",
+    badge: "/favicon.ico",
+  });
+}
+
+function getBillDueDate(bill: Bill, today: Date): Date {
+  if (bill.frequency === "yearly" && bill.dueMonth) {
+    return setMonth(setDate(new Date(today.getFullYear(), 0, 1), bill.dueDay), bill.dueMonth - 1);
+  }
+  return setDate(startOfDay(new Date(today.getFullYear(), today.getMonth(), 1)), bill.dueDay);
+}
+
+function getLastNotifiedKey(billId: number, type: "reminder" | "overdue"): string {
+  return `billflow_notified_${type}_${billId}`;
+}
+
+function wasNotifiedToday(key: string): boolean {
+  const stored = localStorage.getItem(key);
+  if (!stored) return false;
+  return stored === new Date().toDateString();
+}
+
+function markNotifiedToday(key: string) {
+  localStorage.setItem(key, new Date().toDateString());
+}
+
+export function checkAndSendReminders(bills: Bill[], payments: Payment[]) {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+
+  const today = startOfDay(new Date());
+
+  for (const bill of bills) {
+    if (bill.archived) continue;
+
+    const dueDate = getBillDueDate(bill, today);
+
+    // Check if already paid this cycle
+    const isPaidThisCycle = payments.some((p) => {
+      if (p.billId !== bill.id || p.status !== "paid") return false;
+      const pd = startOfDay(parseISO(p.dueDate as unknown as string));
+      return pd.getTime() === dueDate.getTime();
+    });
+
+    if (isPaidThisCycle) continue;
+
+    const daysUntilDue = differenceInDays(dueDate, today);
+
+    // --- Overdue notification ---
+    if (daysUntilDue < 0) {
+      const key = getLastNotifiedKey(bill.id, "overdue");
+      if (!wasNotifiedToday(key)) {
+        sendNotification(
+          `⚠️ Overdue: ${bill.name}`,
+          `This bill was due ${Math.abs(daysUntilDue)} day${Math.abs(daysUntilDue) !== 1 ? "s" : ""} ago. Don't forget to mark it paid.`,
+          `overdue-${bill.id}`
+        );
+        markNotifiedToday(key);
+      }
+      continue;
+    }
+
+    // --- Upcoming reminder notification ---
+    if (bill.reminderDays !== null && bill.reminderDays !== undefined) {
+      if (daysUntilDue <= bill.reminderDays) {
+        const key = getLastNotifiedKey(bill.id, "reminder");
+        if (!wasNotifiedToday(key)) {
+          const msg =
+            daysUntilDue === 0
+              ? `${bill.name} is due today!`
+              : `${bill.name} is due in ${daysUntilDue} day${daysUntilDue !== 1 ? "s" : ""}.`;
+          sendNotification(`🔔 Bill Reminder: ${bill.name}`, msg, `reminder-${bill.id}`);
+          markNotifiedToday(key);
+        }
+      }
+    }
+  }
+}
