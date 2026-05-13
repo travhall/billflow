@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { clsx } from "clsx";
 import { type Bill } from "@shared/schema";
 import { startOfMonth, endOfMonth, setDate, setMonth, isSameMonth, isSameYear, parseISO, isBefore, startOfDay, format } from "date-fns";
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Table,
@@ -22,7 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Trash2, Edit2, RotateCcw, Undo2 } from "lucide-react";
+import { Trash2, Edit2, RotateCcw, Undo2, AlertTriangle, X, CreditCard } from "lucide-react";
 import { useDeleteBill } from "@/hooks/use-bills";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -46,6 +46,7 @@ export default function Dashboard() {
   const { toast } = useToast();
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
   const [historyBill, setHistoryBill] = useState<Bill | null>(null);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
 
   const resetMutation = useMutation({
     mutationFn: async (paymentId: number) => {
@@ -203,15 +204,25 @@ export default function Dashboard() {
       return a.bill.dueDay - b.bill.dueDay;
     });
 
+    const overdueBills = allBillStatuses.filter(item => item.status === "overdue");
+
     return {
       monthlyBillStatuses: sortData(monthlyBillStatuses),
       annualBillStatuses: sortData(annualBillStatuses),
       totalDue,
       totalPaid,
       totalPending,
-      overdueCount
+      overdueCount,
+      overdueBills,
     };
   }, [bills, payments, sortConfig]);
+
+  // Re-show banner whenever a new bill becomes overdue
+  useEffect(() => {
+    if ((processedData?.overdueCount ?? 0) > 0) {
+      setBannerDismissed(false);
+    }
+  }, [processedData?.overdueCount]);
 
   if (billsLoading || paymentsLoading) {
     return (
@@ -401,6 +412,51 @@ export default function Dashboard() {
           </div>
           <CreateBillDialog />
         </div>
+
+        {/* Overdue notification banner */}
+        {processedData.overdueCount > 0 && !bannerDismissed && (
+          <div className="rounded-2xl border border-rose-500/30 bg-rose-500/5 px-5 py-4">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-xl bg-rose-500/15 flex items-center justify-center shrink-0 mt-0.5">
+                <AlertTriangle className="w-4 h-4 text-rose-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-4">
+                  <p className="text-sm font-semibold text-rose-600 dark:text-rose-400">
+                    {processedData.overdueCount === 1
+                      ? "1 bill is overdue"
+                      : `${processedData.overdueCount} bills are overdue`}
+                  </p>
+                  <button
+                    onClick={() => setBannerDismissed(true)}
+                    className="text-rose-400 hover:text-rose-600 transition-colors shrink-0 -mt-0.5"
+                    aria-label="Dismiss"
+                    data-testid="button-dismiss-overdue-banner"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <p className="text-xs text-rose-500/80 mt-0.5 mb-3">
+                  These payments are past their due date. Mark them as paid to keep your records up to date.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {processedData.overdueBills.map((item) => (
+                    <button
+                      key={item.bill.id}
+                      onClick={() => openDialog(item.bill, item.paymentId)}
+                      data-testid={`button-pay-overdue-${item.bill.id}`}
+                      className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 transition-colors"
+                    >
+                      <CreditCard className="w-3 h-3" />
+                      Pay {item.bill.name}
+                      <span className="opacity-60">· {formatCurrency(Number(item.amount))}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <StatsCards 
           totalDue={processedData.totalDue}
