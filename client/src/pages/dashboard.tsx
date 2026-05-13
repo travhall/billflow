@@ -5,6 +5,7 @@ import { StatsCards } from "@/components/stats-cards";
 import { CreateBillDialog } from "@/components/create-bill-dialog";
 import { MarkPaidDialog, useMarkPaidDialog } from "@/components/mark-paid-dialog";
 import { EditBillDialog } from "@/components/edit-bill-dialog";
+import { BillHistorySheet } from "@/components/bill-history-sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,7 @@ export default function Dashboard() {
   const deleteBill = useDeleteBill();
   const { toast } = useToast();
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
+  const [historyBill, setHistoryBill] = useState<Bill | null>(null);
 
   const resetMutation = useMutation({
     mutationFn: async (paymentId: number) => {
@@ -276,14 +278,17 @@ export default function Dashboard() {
             items.map((item) => (
               <TableRow key={item.bill.id} className="group hover:bg-muted/20 transition-colors border-border/50">
                 <TableCell className="pl-6 font-medium text-foreground">
-                  <div className="flex items-center gap-2">
-                    {item.bill.name}
+                  <button
+                    onClick={() => setHistoryBill(item.bill)}
+                    className="flex items-center gap-2 hover:text-primary transition-colors text-left group/name"
+                  >
+                    <span className="group-hover/name:underline underline-offset-2">{item.bill.name}</span>
                     {item.bill.isAutoPay && (
                       <Badge variant="outline" className="h-5 text-[10px] bg-primary/5 text-primary border-primary/20">
                         Auto
                       </Badge>
                     )}
-                  </div>
+                  </button>
                 </TableCell>
                 <TableCell>
                   <Badge variant="outline" className="font-normal text-muted-foreground bg-background border-border">
@@ -410,6 +415,12 @@ export default function Dashboard() {
         </div>
       </motion.div>
       <MarkPaidDialog />
+      <BillHistorySheet
+        bill={historyBill}
+        payments={payments ?? []}
+        open={historyBill !== null}
+        onClose={() => setHistoryBill(null)}
+      />
     </Layout>
   );
 }
