@@ -22,7 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Trash2, Edit2, RotateCcw, Undo2, AlertTriangle, X, CreditCard, FlaskConical, Bell, ChevronDown } from "lucide-react";
+import { Trash2, Edit2, RotateCcw, Undo2, AlertTriangle, X, CreditCard, FlaskConical, Bell, ChevronDown, Search } from "lucide-react";
 import { sendTestNotification, getNotificationPermission, requestNotificationPermission } from "@/lib/notifications";
 import { useDeleteBill } from "@/hooks/use-bills";
 import { useMutation } from "@tanstack/react-query";
@@ -31,8 +31,9 @@ import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { formatCurrency } from "@/lib/utils";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 type SortConfig = {
   key: string;
@@ -51,6 +52,10 @@ export default function Dashboard() {
   const [demoOverdue, setDemoOverdue] = useState(false);
   const [demoOpen, setDemoOpen] = useState(false);
   const [notifPermission, setNotifPermission] = useState(getNotificationPermission());
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "pending" | "overdue">("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const resetMutation = useMutation({
     mutationFn: async (paymentId: number) => {
@@ -240,6 +245,23 @@ export default function Dashboard() {
   }
 
   if (!processedData) return null;
+
+  // Derive unique categories from all bills for the filter
+  const allCategories = Array.from(new Set((bills ?? []).map(b => b.category))).sort();
+
+  const applyFilters = (items: typeof processedData.monthlyBillStatuses) =>
+    items.filter(item => {
+      const matchesSearch = !searchQuery ||
+        item.bill.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.bill.category.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === "all" || item.status === statusFilter;
+      const matchesCategory = categoryFilter === "all" || item.bill.category === categoryFilter;
+      return matchesSearch && matchesStatus && matchesCategory;
+    });
+
+  const filteredMonthly = applyFilters(processedData.monthlyBillStatuses);
+  const filteredAnnual = applyFilters(processedData.annualBillStatuses);
+  const hasActiveFilters = searchQuery || statusFilter !== "all" || categoryFilter !== "all";
 
   const SortIcon = ({ column }: { column: string }) => {
     if (sortConfig?.key !== column) return <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />;
@@ -477,9 +499,77 @@ export default function Dashboard() {
           overdueCount={processedData.overdueCount}
         />
 
+        {/* Search & Filter Bar */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            <Input
+              ref={searchRef}
+              placeholder="Search bills…"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="pl-9 rounded-xl bg-card border-border h-10"
+              data-testid="input-search-bills"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          <div className="flex gap-2 flex-wrap">
+            {(["all", "pending", "paid", "overdue"] as const).map(s => (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                data-testid={`filter-status-${s}`}
+                className={`px-3 h-10 rounded-xl text-sm font-medium border transition-all capitalize ${
+                  statusFilter === s
+                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                    : "bg-card text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
+                }`}
+              >
+                {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
+              </button>
+            ))}
+          </div>
+
+          {allCategories.length > 0 && (
+            <select
+              value={categoryFilter}
+              onChange={e => setCategoryFilter(e.target.value)}
+              data-testid="select-category-filter"
+              className="h-10 px-3 rounded-xl text-sm border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer"
+            >
+              <option value="all">All Categories</option>
+              {allCategories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        {hasActiveFilters && (
+          <div className="flex items-center gap-2 -mt-4">
+            <span className="text-xs text-muted-foreground">
+              {filteredMonthly.length + filteredAnnual.length} result{filteredMonthly.length + filteredAnnual.length !== 1 ? "s" : ""}
+            </span>
+            <button
+              onClick={() => { setSearchQuery(""); setStatusFilter("all"); setCategoryFilter("all"); }}
+              className="text-xs text-primary hover:underline"
+            >
+              Clear filters
+            </button>
+          </div>
+        )}
+
         <div className="space-y-8">
-          <BillTable items={processedData.monthlyBillStatuses} title="Upcoming Monthly Bills" />
-          <BillTable items={processedData.annualBillStatuses} title="Annual Bills Overview" />
+          <BillTable items={filteredMonthly} title="Upcoming Monthly Bills" />
+          <BillTable items={filteredAnnual} title="Annual Bills Overview" />
         </div>
       </motion.div>
       {/* Floating test panel */}
@@ -548,7 +638,7 @@ export default function Dashboard() {
         )}
         <button
           onClick={() => setDemoOpen((o) => !o)}
-          className="w-12 h-12 rounded-2xl bg-slate-800 dark:bg-slate-700 text-white shadow-xl flex items-center justify-center hover:bg-slate-700 transition-all hover:scale-105 active:scale-95"
+          className="w-12 h-12 rounded-2xl bg-foreground text-background shadow-xl flex items-center justify-center hover:opacity-80 transition-all hover:scale-105 active:scale-95"
           title="Test Features"
           data-testid="button-demo-toggle"
         >

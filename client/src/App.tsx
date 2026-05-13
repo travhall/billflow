@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import Dashboard from "@/pages/dashboard";
 import History from "@/pages/history";
 import Upcoming from "@/pages/upcoming";
+import Analytics from "@/pages/analytics";
 import NotFound from "@/pages/not-found";
 import { useEffect } from "react";
 import { checkAndSendReminders } from "@/lib/notifications";
@@ -31,6 +32,7 @@ function Router() {
       <Route path="/" component={Dashboard} />
       <Route path="/history" component={History} />
       <Route path="/upcoming" component={Upcoming} />
+      <Route path="/analytics" component={Analytics} />
       <Route component={NotFound} />
     </Switch>
   );

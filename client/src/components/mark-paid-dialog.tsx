@@ -102,7 +102,7 @@ export function MarkPaidDialog() {
 
   return (
     <Dialog open={isOpen} onOpenChange={closeDialog}>
-      <DialogContent className="sm:max-w-[425px] bg-white rounded-2xl shadow-2xl border-0">
+      <DialogContent className="sm:max-w-[425px] bg-card rounded-2xl shadow-2xl border border-border">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">Mark as Paid</DialogTitle>
           <DialogDescription>
@@ -114,12 +114,12 @@ export function MarkPaidDialog() {
           <div className="space-y-2">
             <Label htmlFor="amount">Amount Paid</Label>
             <div className="relative">
-              <span className="absolute left-3 top-2.5 text-slate-400">$</span>
+              <span className="absolute left-3 top-2.5 text-muted-foreground">$</span>
               <Input
                 id="amount"
                 type="number"
                 step="0.01"
-                className="pl-7 rounded-xl border-slate-200 focus:border-primary focus:ring-primary/10"
+                className="pl-7 rounded-xl"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
               />
@@ -131,23 +131,23 @@ export function MarkPaidDialog() {
             <Input
               id="date"
               type="date"
-              className="rounded-xl border-slate-200 focus:border-primary focus:ring-primary/10"
+              className="rounded-xl"
               value={paidDate}
               onChange={(e) => setPaidDate(e.target.value)}
             />
           </div>
 
-          <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+          <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3">
             <Checkbox
               id="reset-cycle"
               checked={resetCycle}
               onCheckedChange={(v) => setResetCycle(!!v)}
             />
             <div>
-              <label htmlFor="reset-cycle" className="text-sm font-medium text-slate-800 cursor-pointer">
+              <label htmlFor="reset-cycle" className="text-sm font-medium text-foreground cursor-pointer">
                 Reset for next cycle
               </label>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 Automatically queue the next {bill.frequency === "yearly" ? "annual" : "monthly"} payment
               </p>
             </div>

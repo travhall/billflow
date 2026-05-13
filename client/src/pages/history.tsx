@@ -12,6 +12,9 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { motion } from "framer-motion";
+import { Badge } from "@/components/ui/badge";
+import { clsx } from "clsx";
+import { formatCurrency } from "@/lib/utils";
 
 export default function History() {
   const { data: payments, isLoading: paymentsLoading } = usePayments();
@@ -26,10 +29,8 @@ export default function History() {
     );
   }
 
-  // Create a map of bill IDs to names for easy lookup
   const billMap = new Map(bills?.map(b => [b.id, b]));
 
-  // Sort payments by paid date descending
   const sortedPayments = [...(payments || [])].sort((a, b) => {
     const dateA = a.paidDate ? new Date(a.paidDate).getTime() : 0;
     const dateB = b.paidDate ? new Date(b.paidDate).getTime() : 0;
@@ -44,26 +45,26 @@ export default function History() {
         className="space-y-6"
       >
         <div>
-          <h1 className="text-3xl font-display font-bold text-slate-900">Payment History</h1>
-          <p className="text-slate-500">A record of all your past payments.</p>
+          <h1 className="text-3xl font-display font-bold text-foreground">Payment History</h1>
+          <p className="text-muted-foreground">A record of all your past payments.</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
           <Table>
-            <TableHeader className="bg-slate-50">
+            <TableHeader className="bg-muted/40">
               <TableRow>
-                <TableHead className="font-semibold text-slate-900">Bill Name</TableHead>
-                <TableHead className="font-semibold text-slate-900">Category</TableHead>
-                <TableHead className="font-semibold text-slate-900">Due Date</TableHead>
-                <TableHead className="font-semibold text-slate-900">Paid Date</TableHead>
-                <TableHead className="font-semibold text-slate-900 text-right">Amount</TableHead>
-                <TableHead className="font-semibold text-slate-900">Status</TableHead>
+                <TableHead className="font-semibold text-foreground">Bill Name</TableHead>
+                <TableHead className="font-semibold text-foreground">Category</TableHead>
+                <TableHead className="font-semibold text-foreground">Due Date</TableHead>
+                <TableHead className="font-semibold text-foreground">Paid Date</TableHead>
+                <TableHead className="font-semibold text-foreground text-right">Amount</TableHead>
+                <TableHead className="font-semibold text-foreground">Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {sortedPayments.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12 text-slate-500">
+                  <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                     No payment history found.
                   </TableCell>
                 </TableRow>
@@ -71,30 +72,38 @@ export default function History() {
                 sortedPayments.map((payment) => {
                   const bill = billMap.get(payment.billId);
                   return (
-                    <TableRow key={payment.id} className="hover:bg-slate-50/50 transition-colors">
-                      <TableCell className="font-medium text-slate-900">
+                    <TableRow key={payment.id} className="hover:bg-muted/30 transition-colors border-border/50">
+                      <TableCell className="font-medium text-foreground">
                         {bill?.name || "Unknown Bill"}
                       </TableCell>
                       <TableCell>
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
+                        <Badge variant="outline" className="font-normal text-muted-foreground">
                           {bill?.category || "Uncategorized"}
-                        </span>
+                        </Badge>
                       </TableCell>
-                      <TableCell className="text-slate-500">
+                      <TableCell className="text-muted-foreground">
                         {format(parseISO(payment.dueDate as unknown as string), "MMM d, yyyy")}
                       </TableCell>
-                      <TableCell className="text-slate-500">
+                      <TableCell className="text-muted-foreground">
                         {payment.paidDate 
                           ? format(parseISO(payment.paidDate as unknown as string), "MMM d, yyyy") 
                           : "-"}
                       </TableCell>
-                      <TableCell className="text-right font-medium">
-                        ${Number(payment.amount).toFixed(2)}
+                      <TableCell className="text-right font-display font-bold text-foreground">
+                        {formatCurrency(Number(payment.amount))}
                       </TableCell>
                       <TableCell>
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
-                          PAID
-                        </span>
+                        <Badge
+                          variant="outline"
+                          className={clsx(
+                            "text-xs font-semibold capitalize",
+                            payment.status === "paid"    && "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
+                            payment.status === "overdue" && "bg-rose-500/10 text-rose-500 border-rose-500/20",
+                            payment.status === "pending" && "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                          )}
+                        >
+                          {payment.status}
+                        </Badge>
                       </TableCell>
                     </TableRow>
                   );

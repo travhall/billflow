@@ -22,8 +22,8 @@ export function BillCard({ bill, status, dueDate, amount }: BillCardProps) {
 
   return (
     <div className={clsx(
-      "group relative bg-white rounded-2xl p-5 border transition-all duration-300 hover:-translate-y-1 hover:shadow-xl",
-      isOverdue ? "border-red-100 shadow-red-50" : "border-slate-100 shadow-slate-200/50"
+      "group relative bg-card rounded-2xl p-5 border transition-all duration-300 hover:-translate-y-1 hover:shadow-xl",
+      isOverdue ? "border-rose-200 dark:border-rose-900 shadow-rose-50 dark:shadow-none" : "border-border shadow-sm"
     )}>
       <div className="flex justify-between items-start mb-4">
         <div className="flex items-center gap-3">
@@ -34,31 +34,31 @@ export function BillCard({ bill, status, dueDate, amount }: BillCardProps) {
             bill.category === "Subscription" && "bg-purple-50 text-purple-600",
             bill.category === "Insurance" && "bg-emerald-50 text-emerald-600",
             bill.category === "Debt" && "bg-amber-50 text-amber-600",
-            !["Utilities", "Rent", "Subscription", "Insurance", "Debt"].includes(bill.category) && "bg-slate-100 text-slate-600"
+            !["Utilities", "Rent", "Subscription", "Insurance", "Debt"].includes(bill.category) && "bg-muted text-muted-foreground"
           )}>
             {bill.name.charAt(0)}
           </div>
           <div>
-            <h3 className="font-bold text-slate-900 group-hover:text-primary transition-colors">{bill.name}</h3>
-            <p className="text-xs text-slate-500 font-medium">{bill.category}</p>
+            <h3 className="font-bold text-foreground group-hover:text-primary transition-colors">{bill.name}</h3>
+            <p className="text-xs text-muted-foreground font-medium">{bill.category}</p>
           </div>
         </div>
         
         <div className="text-right">
-          <div className="text-lg font-display font-bold text-slate-900">
+          <div className="text-lg font-display font-bold text-foreground">
             ${Number(displayAmount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
           </div>
           {bill.isVariable && !isPaid && (
-            <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+            <span className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
               Variable
             </span>
           )}
         </div>
       </div>
 
-      <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-        <div className="flex items-center gap-2 text-sm text-slate-500">
-          <Calendar className="w-4 h-4 text-slate-400" />
+      <div className="flex items-center justify-between pt-4 border-t border-border/60">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Calendar className="w-4 h-4 text-muted-foreground/70" />
           <span className={clsx(isOverdue && !isPaid && "text-red-600 font-medium")}>
             Due {format(dueDate, "MMM d")}
           </span>
@@ -77,7 +77,7 @@ export function BillCard({ bill, status, dueDate, amount }: BillCardProps) {
               "h-8 px-4 rounded-full text-xs font-semibold shadow-md transition-all",
               isOverdue 
                 ? "bg-red-500 hover:bg-red-600 shadow-red-200" 
-                : "bg-slate-900 hover:bg-primary shadow-slate-200"
+                : "bg-foreground hover:bg-primary text-background shadow-sm"
             )}
             onClick={() => openDialog(bill, dueDate)}
           >

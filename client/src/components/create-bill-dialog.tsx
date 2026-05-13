@@ -68,10 +68,10 @@ export function CreateBillDialog() {
           Add Bill
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px] bg-white p-0 overflow-hidden border-0 shadow-2xl rounded-2xl">
-        <div className="bg-slate-50 p-6 border-b border-slate-100">
-          <DialogTitle className="text-xl font-display font-bold text-slate-900">Add New Bill</DialogTitle>
-          <p className="text-sm text-slate-500 mt-1">Set up a recurring bill to track.</p>
+      <DialogContent className="sm:max-w-[500px] bg-card p-0 overflow-hidden border border-border shadow-2xl rounded-2xl">
+        <div className="bg-muted/40 p-6 border-b border-border">
+          <DialogTitle className="text-xl font-display font-bold text-foreground">Add New Bill</DialogTitle>
+          <p className="text-sm text-muted-foreground mt-1">Set up a recurring bill to track.</p>
         </div>
         
         <div className="p-6">
@@ -190,10 +190,10 @@ export function CreateBillDialog() {
                 control={form.control}
                 name="isAutoPay"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-xl border border-slate-200 p-4 bg-slate-50/50">
+                  <FormItem className="flex flex-row items-center justify-between rounded-xl border border-border p-4 bg-muted/30">
                     <div className="space-y-0.5">
                       <FormLabel className="text-base">Auto Pay</FormLabel>
-                      <div className="text-xs text-slate-500">
+                      <div className="text-xs text-muted-foreground">
                         Automatically reset cycle when due date passes
                       </div>
                     </div>
@@ -211,10 +211,10 @@ export function CreateBillDialog() {
                 control={form.control}
                 name="isVariable"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-xl border border-slate-200 p-4 bg-slate-50/50">
+                  <FormItem className="flex flex-row items-center justify-between rounded-xl border border-border p-4 bg-muted/30">
                     <div className="space-y-0.5">
                       <FormLabel className="text-base">Variable Amount</FormLabel>
-                      <div className="text-xs text-slate-500">
+                      <div className="text-xs text-muted-foreground">
                         Does the amount change each bill?
                       </div>
                     </div>
@@ -229,11 +229,11 @@ export function CreateBillDialog() {
               />
 
               {/* Reminder section */}
-              <div className="rounded-xl border border-slate-200 p-4 space-y-3 bg-slate-50/50">
+              <div className="rounded-xl border border-border p-4 space-y-3 bg-muted/30">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Bell className="w-4 h-4 text-slate-500" />
-                    <span className="text-sm font-medium text-slate-700">Payment Reminder</span>
+                    <Bell className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm font-medium text-foreground">Payment Reminder</span>
                   </div>
                   {notifPermission !== "granted" && (
                     <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={enableReminders}>
@@ -270,7 +270,7 @@ export function CreateBillDialog() {
                     )}
                   />
                 ) : (
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     {notifPermission === "denied"
                       ? "Notifications are blocked. Allow them in your browser settings."
                       : "Get notified before bills are due. Click Enable to allow notifications."}

@@ -1,6 +1,6 @@
 import { Sidebar, SidebarContent, SidebarHeader, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, History, Wallet, CalendarClock } from "lucide-react";
+import { LayoutDashboard, History, Wallet, CalendarClock, BarChart2 } from "lucide-react";
 import { clsx } from "clsx";
 
 export function AppSidebar() {
@@ -10,6 +10,7 @@ export function AppSidebar() {
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
     { href: "/upcoming", label: "Upcoming", icon: CalendarClock },
     { href: "/history", label: "History", icon: History },
+    { href: "/analytics", label: "Analytics", icon: BarChart2 },
   ];
 
   return (
@@ -57,7 +58,7 @@ export function AppSidebar() {
         <div className="bg-primary/10 rounded-xl p-4 text-foreground shadow-xl shadow-primary/5 relative overflow-hidden group/card cursor-pointer group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:aspect-square group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center">
           <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity" />
           <div className="group-data-[collapsible=icon]:hidden">
-            <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Current Plan</p>
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-1">Current Plan</p>
             <p className="font-semibold">Pro</p>
           </div>
           <div className="hidden group-data-[collapsible=icon]:block">
