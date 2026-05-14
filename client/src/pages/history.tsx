@@ -3,6 +3,7 @@ import { useBills } from "@/hooks/use-bills";
 import { Layout } from "@/components/layout";
 import { format, parseISO } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { 
   Table, 
   TableBody, 
@@ -15,6 +16,43 @@ import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { clsx } from "clsx";
 import { formatCurrency } from "@/lib/utils";
+import { Download } from "lucide-react";
+import type { Payment, Bill } from "@shared/schema";
+
+function exportToCSV(payments: Payment[], billMap: Map<number, Bill>) {
+  const header = ["Bill Name", "Category", "Due Date", "Paid Date", "Amount", "Status"];
+  const rows = [...payments]
+    .sort((a, b) => {
+      const dateA = a.paidDate ? new Date(a.paidDate).getTime() : 0;
+      const dateB = b.paidDate ? new Date(b.paidDate).getTime() : 0;
+      return dateB - dateA;
+    })
+    .map((p) => {
+      const bill = billMap.get(p.billId);
+      return [
+        bill?.name ?? "Unknown",
+        bill?.category ?? "Uncategorized",
+        format(parseISO(p.dueDate as unknown as string), "yyyy-MM-dd"),
+        p.paidDate ? format(parseISO(p.paidDate as unknown as string), "yyyy-MM-dd") : "",
+        Number(p.amount).toFixed(2),
+        p.status,
+      ];
+    });
+
+  const csv = [header, ...rows]
+    .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+    .join("\n");
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `billflow-history-${format(new Date(), "yyyy-MM-dd")}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
 
 export default function History() {
   const { data: payments, isLoading: paymentsLoading } = usePayments();
@@ -30,8 +68,9 @@ export default function History() {
   }
 
   const billMap = new Map(bills?.map(b => [b.id, b]));
+  const paidPayments = (payments ?? []).filter(p => p.status === "paid");
 
-  const sortedPayments = [...(payments || [])].sort((a, b) => {
+  const sortedPayments = [...(payments ?? [])].sort((a, b) => {
     const dateA = a.paidDate ? new Date(a.paidDate).getTime() : 0;
     const dateB = b.paidDate ? new Date(b.paidDate).getTime() : 0;
     return dateB - dateA;
@@ -44,9 +83,24 @@ export default function History() {
         animate={{ opacity: 1 }}
         className="space-y-6"
       >
-        <div>
-          <h1 className="text-3xl font-display font-bold text-foreground">Payment History</h1>
-          <p className="text-muted-foreground">A record of all your past payments.</p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-display font-bold text-foreground">Payment History</h1>
+            <p className="text-muted-foreground">
+              {paidPayments.length} payment{paidPayments.length !== 1 ? "s" : ""} recorded
+            </p>
+          </div>
+          {paidPayments.length > 0 && (
+            <Button
+              variant="outline"
+              className="rounded-xl gap-2 shrink-0"
+              onClick={() => exportToCSV(paidPayments, billMap)}
+              data-testid="button-export-csv"
+            >
+              <Download className="w-4 h-4" />
+              Export CSV
+            </Button>
+          )}
         </div>
 
         <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
@@ -87,7 +141,7 @@ export default function History() {
                       <TableCell className="text-muted-foreground">
                         {payment.paidDate 
                           ? format(parseISO(payment.paidDate as unknown as string), "MMM d, yyyy") 
-                          : "-"}
+                          : "—"}
                       </TableCell>
                       <TableCell className="text-right font-display font-bold text-foreground">
                         {formatCurrency(Number(payment.amount))}

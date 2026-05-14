@@ -10,6 +10,7 @@ import Upcoming from "@/pages/upcoming";
 import Analytics from "@/pages/analytics";
 import NotFound from "@/pages/not-found";
 import { InstallPrompt } from "@/components/install-prompt";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { useEffect } from "react";
 import { checkAndSendReminders } from "@/lib/notifications";
 import type { Bill, Payment } from "@shared/schema";
@@ -45,7 +46,9 @@ function App() {
       <ThemeProvider defaultTheme="light" storageKey="billflow-theme">
         <TooltipProvider>
           <NotificationRunner />
-          <Router />
+          <ErrorBoundary>
+            <Router />
+          </ErrorBoundary>
           <Toaster />
           <InstallPrompt />
         </TooltipProvider>

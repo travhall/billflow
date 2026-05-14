@@ -1,16 +1,23 @@
-import { Sidebar, SidebarContent, SidebarHeader, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
+import { Sidebar, SidebarContent, SidebarHeader, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from "@/components/ui/sidebar"
 import { Link, useLocation } from "wouter";
 import { LayoutDashboard, History, Wallet, CalendarClock, BarChart2 } from "lucide-react";
 import { clsx } from "clsx";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function AppSidebar() {
   const [location] = useLocation();
+  const queryClient = useQueryClient();
+
+  const prefetchAll = () => {
+    queryClient.prefetchQuery({ queryKey: ["/api/bills"] });
+    queryClient.prefetchQuery({ queryKey: ["/api/payments"] });
+  };
 
   const navItems = [
-    { href: "/", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/upcoming", label: "Upcoming", icon: CalendarClock },
-    { href: "/history", label: "History", icon: History },
-    { href: "/analytics", label: "Analytics", icon: BarChart2 },
+    { href: "/", label: "Dashboard", icon: LayoutDashboard, prefetch: prefetchAll },
+    { href: "/upcoming", label: "Upcoming", icon: CalendarClock, prefetch: prefetchAll },
+    { href: "/history", label: "History", icon: History, prefetch: () => queryClient.prefetchQuery({ queryKey: ["/api/payments"] }) },
+    { href: "/analytics", label: "Analytics", icon: BarChart2, prefetch: prefetchAll },
   ];
 
   return (
@@ -33,12 +40,16 @@ export function AppSidebar() {
                 return (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton asChild isActive={isActive} tooltip={item.label}>
-                      <Link href={item.href} className={clsx(
-                        "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
-                        isActive 
-                          ? "bg-sidebar-accent text-sidebar-accent-foreground" 
-                          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                      )}>
+                      <Link
+                        href={item.href}
+                        onMouseEnter={item.prefetch}
+                        className={clsx(
+                          "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                          isActive 
+                            ? "bg-sidebar-accent text-sidebar-accent-foreground" 
+                            : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        )}
+                      >
                         <item.icon className={clsx(
                           "w-5 h-5 transition-colors shrink-0",
                           isActive ? "text-primary" : "text-sidebar-foreground/50"

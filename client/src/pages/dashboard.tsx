@@ -2,8 +2,9 @@ import { useBills } from "@/hooks/use-bills";
 import { usePayments } from "@/hooks/use-payments";
 import { Layout } from "@/components/layout";
 import { StatsCards } from "@/components/stats-cards";
-import { CreateBillDialog } from "@/components/create-bill-dialog";
+import { CreateBillDialog, useCreateBillStore } from "@/components/create-bill-dialog";
 import { MarkPaidDialog, useMarkPaidDialog } from "@/components/mark-paid-dialog";
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { EditBillDialog } from "@/components/edit-bill-dialog";
 import { BillHistorySheet } from "@/components/bill-history-sheet";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -56,6 +57,12 @@ export default function Dashboard() {
   const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "pending" | "overdue">("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const searchRef = useRef<HTMLInputElement>(null);
+  const { openDialog: openAddBill } = useCreateBillStore();
+
+  useKeyboardShortcuts({
+    onOpenAddBill: openAddBill,
+    onFocusSearch: () => searchRef.current?.focus(),
+  });
 
   const resetMutation = useMutation({
     mutationFn: async (paymentId: number) => {
@@ -567,10 +574,29 @@ export default function Dashboard() {
           </div>
         )}
 
-        <div className="space-y-8">
-          <BillTable items={filteredMonthly} title="Upcoming Monthly Bills" />
-          <BillTable items={filteredAnnual} title="Annual Bills Overview" />
-        </div>
+        {/* Empty state when no bills exist at all */}
+        {bills?.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center mb-6">
+              <CreditCard className="w-10 h-10 text-primary" />
+            </div>
+            <h2 className="text-2xl font-display font-bold text-foreground mb-2">No bills yet</h2>
+            <p className="text-muted-foreground max-w-sm mb-8">
+              Add your first recurring bill to start tracking your payments and budget.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <CreateBillDialog />
+              <p className="text-xs text-muted-foreground">
+                Press <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border text-xs font-mono">N</kbd> anytime to add a bill
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            <BillTable items={filteredMonthly} title="Upcoming Monthly Bills" />
+            <BillTable items={filteredAnnual} title="Annual Bills Overview" />
+          </div>
+        )}
       </motion.div>
       {/* Floating test panel */}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">

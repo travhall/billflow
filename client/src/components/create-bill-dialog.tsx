@@ -12,8 +12,20 @@ import { Plus, Bell } from "lucide-react";
 import { useState } from "react";
 import { z } from "zod";
 import { requestNotificationPermission, getNotificationPermission } from "@/lib/notifications";
-
 import { Checkbox } from "@/components/ui/checkbox";
+import { create } from "zustand";
+
+interface CreateBillStore {
+  isOpen: boolean;
+  openDialog: () => void;
+  closeDialog: () => void;
+}
+
+export const useCreateBillStore = create<CreateBillStore>((set) => ({
+  isOpen: false,
+  openDialog: () => set({ isOpen: true }),
+  closeDialog: () => set({ isOpen: false }),
+}));
 
 // Enhance schema for form validation
 const formSchema = insertBillSchema.extend({
@@ -24,7 +36,7 @@ const formSchema = insertBillSchema.extend({
 });
 
 export function CreateBillDialog() {
-  const [open, setOpen] = useState(false);
+  const { isOpen, openDialog, closeDialog } = useCreateBillStore();
   const [notifPermission, setNotifPermission] = useState(getNotificationPermission());
   const createBill = useCreateBill();
 
@@ -54,14 +66,14 @@ export function CreateBillDialog() {
   function onSubmit(values: z.infer<typeof formSchema>) {
     createBill.mutate(values, {
       onSuccess: () => {
-        setOpen(false);
+        closeDialog();
         form.reset();
       },
     });
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={isOpen} onOpenChange={(o) => o ? openDialog() : closeDialog()}>
       <DialogTrigger asChild>
         <Button className="rounded-xl bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 text-white gap-2 pl-4 pr-5 transition-all hover:scale-105 active:scale-95">
           <Plus className="w-5 h-5" />

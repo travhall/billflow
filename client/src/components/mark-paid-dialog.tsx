@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { type Bill } from "@shared/schema";
+import { type Bill, type Payment } from "@shared/schema";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,6 +54,21 @@ export function MarkPaidDialog() {
     if (!amount || !paidDate) return;
 
     setIsPending(true);
+
+    // Snapshot for rollback on error
+    const previousPayments = queryClient.getQueryData<Payment[]>(["/api/payments"]);
+
+    // Optimistic update — mark the payment as paid immediately in the cache
+    if (paymentId && previousPayments) {
+      queryClient.setQueryData<Payment[]>(["/api/payments"], (old) =>
+        old?.map((p) =>
+          p.id === paymentId
+            ? { ...p, status: "paid" as const, paidDate: new Date(paidDate).toISOString() }
+            : p
+        ) ?? []
+      );
+    }
+
     try {
       let savedPaymentId: number;
 
@@ -94,6 +109,10 @@ export function MarkPaidDialog() {
       });
       closeDialog();
     } catch {
+      // Rollback optimistic update on failure
+      if (previousPayments) {
+        queryClient.setQueryData(["/api/payments"], previousPayments);
+      }
       toast({ title: "Error", description: "Failed to record payment", variant: "destructive" });
     } finally {
       setIsPending(false);
