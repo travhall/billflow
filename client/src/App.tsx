@@ -9,6 +9,7 @@ import History from "@/pages/history";
 import Upcoming from "@/pages/upcoming";
 import Analytics from "@/pages/analytics";
 import NotFound from "@/pages/not-found";
+import { InstallPrompt } from "@/components/install-prompt";
 import { useEffect } from "react";
 import { checkAndSendReminders } from "@/lib/notifications";
 import type { Bill, Payment } from "@shared/schema";
@@ -46,6 +47,7 @@ function App() {
           <NotificationRunner />
           <Router />
           <Toaster />
+          <InstallPrompt />
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
