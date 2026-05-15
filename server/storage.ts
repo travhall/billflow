@@ -1,10 +1,11 @@
 import { db } from "./db";
 import {
-  bills, payments,
+  bills, payments, categoryBudgets,
   type Bill, type InsertBill, type Payment, type InsertPayment,
-  type UpdateBillRequest, type UpdatePaymentRequest
+  type UpdateBillRequest, type UpdatePaymentRequest,
+  type CategoryBudget,
 } from "@shared/schema";
-import { eq, desc, and, gte, lte } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
   getBills(): Promise<Bill[]>;
@@ -20,6 +21,10 @@ export interface IStorage {
   deletePayment(id: number): Promise<void>;
   resetPayment(id: number): Promise<Payment>;
   revertPayment(id: number): Promise<Payment>;
+
+  getBudgets(): Promise<CategoryBudget[]>;
+  upsertBudget(category: string, monthlyLimit: string): Promise<CategoryBudget>;
+  deleteBudget(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -57,11 +62,9 @@ export class DatabaseStorage implements IStorage {
       if (payment.status !== "paid" && new Date(payment.dueDate) < today) {
         const [bill] = await db.select().from(bills).where(eq(bills.id, payment.billId));
         if (bill && bill.isAutoPay) {
-          // Mark as paid and trigger next cycle
           await db.update(payments)
             .set({ status: "paid", paidDate: new Date() })
             .where(eq(payments.id, payment.id));
-          
           await this.resetPayment(payment.id);
         }
       }
@@ -122,6 +125,26 @@ export class DatabaseStorage implements IStorage {
       .where(eq(payments.id, id))
       .returning();
     return updated;
+  }
+
+  async getBudgets(): Promise<CategoryBudget[]> {
+    return await db.select().from(categoryBudgets);
+  }
+
+  async upsertBudget(category: string, monthlyLimit: string): Promise<CategoryBudget> {
+    const [result] = await db
+      .insert(categoryBudgets)
+      .values({ category, monthlyLimit })
+      .onConflictDoUpdate({
+        target: categoryBudgets.category,
+        set: { monthlyLimit },
+      })
+      .returning();
+    return result;
+  }
+
+  async deleteBudget(id: number): Promise<void> {
+    await db.delete(categoryBudgets).where(eq(categoryBudgets.id, id));
   }
 }
 

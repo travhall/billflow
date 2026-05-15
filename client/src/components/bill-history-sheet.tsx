@@ -11,12 +11,28 @@ import { clsx } from "clsx";
 import { format, parseISO } from "date-fns";
 import { formatCurrency } from "@/lib/utils";
 import { CalendarCheck2, TrendingUp, Receipt, Clock } from "lucide-react";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
 interface BillHistorySheetProps {
   bill: Bill | null;
   payments: Payment[];
   open: boolean;
   onClose: () => void;
+}
+
+function TrendTooltip({ active, payload }: { active?: boolean; payload?: Array<{ value: number }> }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-card border border-border rounded-lg px-3 py-1.5 shadow-xl text-xs">
+      <p className="font-display font-bold text-foreground">{formatCurrency(payload[0].value)}</p>
+    </div>
+  );
 }
 
 export function BillHistorySheet({ bill, payments, open, onClose }: BillHistorySheetProps) {
@@ -30,6 +46,20 @@ export function BillHistorySheet({ bill, payments, open, onClose }: BillHistoryS
   const totalPaid = paidPayments.reduce((sum, p) => sum + Number(p.amount), 0);
   const avgAmount = paidPayments.length > 0 ? totalPaid / paidPayments.length : Number(bill.defaultAmount);
   const lastPaid = paidPayments[0];
+
+  // Spending trend: paid payments sorted oldest → newest
+  const trendData = [...paidPayments]
+    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+    .map((p) => ({
+      month: format(parseISO(p.dueDate as unknown as string), "MMM yy"),
+      amount: Number(p.amount),
+    }));
+
+  const hasTrend = trendData.length >= 2;
+  const trendDirection =
+    hasTrend && trendData.length >= 2
+      ? trendData[trendData.length - 1].amount - trendData[0].amount
+      : 0;
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
@@ -87,21 +117,67 @@ export function BillHistorySheet({ bill, payments, open, onClose }: BillHistoryS
           </div>
         </div>
 
-        {/* Last paid callout */}
-        {lastPaid && lastPaid.paidDate && (
-          <div className="mx-6 mt-4 px-4 py-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20 flex items-center gap-3">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-            <p className="text-sm text-emerald-700 dark:text-emerald-400">
-              Last paid on{" "}
-              <span className="font-semibold">
-                {format(parseISO(lastPaid.paidDate as unknown as string), "MMMM d, yyyy")}
-              </span>
-            </p>
-          </div>
-        )}
-
-        {/* Payment history list */}
         <div className="flex-1 overflow-y-auto">
+          {/* Last paid callout */}
+          {lastPaid && lastPaid.paidDate && (
+            <div className="mx-6 mt-4 px-4 py-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20 flex items-center gap-3">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+              <p className="text-sm text-emerald-700 dark:text-emerald-400">
+                Last paid on{" "}
+                <span className="font-semibold">
+                  {format(parseISO(lastPaid.paidDate as unknown as string), "MMMM d, yyyy")}
+                </span>
+              </p>
+            </div>
+          )}
+
+          {/* Spending trend chart */}
+          {hasTrend && (
+            <div className="mx-6 mt-4 p-4 rounded-xl bg-muted/30 border border-border">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Amount Trend
+                </p>
+                {trendDirection !== 0 && (
+                  <span className={clsx(
+                    "text-xs font-semibold",
+                    trendDirection > 0 ? "text-rose-500" : "text-emerald-500"
+                  )}>
+                    {trendDirection > 0 ? "↑" : "↓"} {formatCurrency(Math.abs(trendDirection))}
+                  </span>
+                )}
+              </div>
+              <ResponsiveContainer width="100%" height={80}>
+                <AreaChart data={trendData} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
+                  <defs>
+                    <linearGradient id={`trendGrad-${bill.id}`} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis
+                    dataKey="month"
+                    tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }}
+                    axisLine={false}
+                    tickLine={false}
+                    interval="preserveStartEnd"
+                  />
+                  <Tooltip content={<TrendTooltip />} />
+                  <Area
+                    type="monotone"
+                    dataKey="amount"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={2}
+                    fill={`url(#trendGrad-${bill.id})`}
+                    dot={false}
+                    activeDot={{ r: 4, fill: "hsl(var(--primary))" }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {/* Payment history list */}
           <div className="px-6 pt-4 pb-2">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Payment History</p>
           </div>
@@ -121,14 +197,12 @@ export function BillHistorySheet({ bill, payments, open, onClose }: BillHistoryS
 
                 return (
                   <div key={payment.id} className="py-3.5 flex items-center gap-4">
-                    {/* Status indicator */}
                     <div className={clsx(
                       "w-2 h-2 rounded-full shrink-0",
                       payment.status === "paid" ? "bg-emerald-500" :
                       payment.status === "overdue" ? "bg-rose-500" : "bg-amber-500"
                     )} />
 
-                    {/* Date info */}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground">
                         {format(dueDate, "MMMM d, yyyy")}
@@ -142,7 +216,6 @@ export function BillHistorySheet({ bill, payments, open, onClose }: BillHistoryS
                       </p>
                     </div>
 
-                    {/* Amount + status */}
                     <div className="text-right shrink-0">
                       <p className="text-sm font-display font-bold text-foreground">
                         {formatCurrency(Number(payment.amount))}

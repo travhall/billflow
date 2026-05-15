@@ -3,6 +3,16 @@ import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+export const categoryBudgets = pgTable("category_budgets", {
+  id: serial("id").primaryKey(),
+  category: text("category").notNull().unique(),
+  monthlyLimit: numeric("monthly_limit").notNull(),
+});
+
+export const insertCategoryBudgetSchema = createInsertSchema(categoryBudgets).omit({ id: true });
+export type CategoryBudget = typeof categoryBudgets.$inferSelect;
+export type InsertCategoryBudget = z.infer<typeof insertCategoryBudgetSchema>;
+
 export const bills = pgTable("bills", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),

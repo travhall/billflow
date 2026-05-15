@@ -133,5 +133,32 @@ export async function registerRoutes(
     }
   });
 
+  // Category budgets
+  app.get("/api/budgets", async (_req, res) => {
+    const budgets = await storage.getBudgets();
+    res.json(budgets);
+  });
+
+  app.post("/api/budgets", async (req, res) => {
+    try {
+      const { category, monthlyLimit } = z.object({
+        category: z.string().min(1),
+        monthlyLimit: z.string().min(1),
+      }).parse(req.body);
+      const budget = await storage.upsertBudget(category, monthlyLimit);
+      res.status(201).json(budget);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      throw err;
+    }
+  });
+
+  app.delete("/api/budgets/:id", async (req, res) => {
+    await storage.deleteBudget(Number(req.params.id));
+    res.status(204).send();
+  });
+
   return httpServer;
 }
