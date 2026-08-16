@@ -36,7 +36,7 @@ and update your row when done.
 | 020  | Add Budgets & Analytics section to manual test plan | P2 | S | LOW | — | TODO |
 | 021  | Add CLAUDE.md, fix stale claims in replit.md | P2 | S | LOW | — | TODO |
 | 022  | Add `.env.example` | P2 | S | LOW | — | DONE (`.env.example` created at repo root with `DATABASE_URL`, `PORT`, `HOST`, `NODE_ENV`; drift check found `server/index.ts` had gained a `HOST` env var since the plan was written, added it too; confirmed not git-ignored — `.gitignore:3`'s `.env` pattern is exact, not `.env*`; branched `advisor/022-add-env-example` off `main`) |
-| 023  | Add ESLint and Prettier | P3 | S | LOW | — | TODO |
+| 023  | Add ESLint and Prettier | P3 | S | LOW | — | BLOCKED (`eslint.config.js`, `.prettierrc.json` created; `eslint`/`typescript-eslint`/`eslint-plugin-react-hooks`/`prettier` installed; `lint`/`format` scripts added to `package.json`; `pnpm exec eslint --version` succeeds and `pnpm check` holds at the 23-error pre-existing baseline, no new errors — but Step 4's `pnpm lint` hits the plan's own STOP condition: `typescript-eslint@8.67.0` refuses to run against this repo's `typescript@7.0.2` ("does not support TS 7.0"), a config-load failure, not a lint finding; `--version` doesn't load the parser so Step 2's verify passed while the real incompatibility only surfaces on `eslint .`; uncommitted on branch `advisor/023-add-eslint-prettier`, left for follow-up — needs a TS-7-compatible typescript-eslint version or a TS downgrade, both out of this plan's install-only scope) |
 | 024  | Add index on `payments.dueDate` | P3 | S | LOW | — | TODO |
 | 025  | Memoize derived data in Analytics and Upcoming | P3 | S | LOW | — | TODO |
 | 026  | Add route-level code splitting | P3 | S | LOW | — | TODO |
