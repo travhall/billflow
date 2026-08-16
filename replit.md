@@ -11,7 +11,7 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### Frontend Architecture
-- **Framework**: React 18 with TypeScript
+- **Framework**: React 19 with TypeScript
 - **Routing**: Wouter (lightweight React router)
 - **State Management**: TanStack React Query for server state caching and synchronization
 - **UI Components**: shadcn/ui component library built on Radix UI primitives
@@ -55,14 +55,15 @@ Preferred communication style: Simple, everyday language.
 ```
 
 ### Development vs Production
-- **Development**: Vite dev server with HMR, integrated with Express backend
-- **Production**: Static files served from `dist/public`, server bundled to `dist/index.cjs`
+- **Development**: `pnpm dev` runs Vite dev server with HMR, integrated with the Express backend, against a Neon-hosted PostgreSQL database (`DATABASE_URL` in `.env`)
+- **Production**: Static files served from `dist/public`, server bundled to `dist/index.cjs` via `pnpm build` + `pnpm start`
+- **Backups**: Nightly `pg_dump` of the database to Cloudflare R2 via `script/backup-db.sh`
 
 ## External Dependencies
 
 ### Database
 - **PostgreSQL**: Primary data store, connection via `DATABASE_URL` environment variable
-- **connect-pg-simple**: Session storage for PostgreSQL (available but not currently implemented)
+- **Session/auth stack**: `connect-pg-simple`, `express-session`, `passport`, `passport-local`, `memorystore` were removed as unused (this app has no login system by design; single-user, local use)
 
 ### UI Component Libraries
 - **Radix UI**: Headless component primitives (dialogs, dropdowns, forms, etc.)
