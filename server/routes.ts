@@ -63,6 +63,9 @@ export async function registerRoutes(
           field: err.errors[0].path.join('.'),
         });
       }
+      if (err instanceof Error && err.message === "Bill not found") {
+        return res.status(404).json({ message: err.message });
+      }
       throw err;
     }
   });
@@ -105,6 +108,9 @@ export async function registerRoutes(
           message: err.errors[0].message,
           field: err.errors[0].path.join('.'),
         });
+      }
+      if (err instanceof Error && err.message === "Payment not found") {
+        return res.status(404).json({ message: err.message });
       }
       throw err;
     }

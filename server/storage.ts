@@ -47,6 +47,7 @@ export class DatabaseStorage implements IStorage {
 
   async updateBill(id: number, updates: UpdateBillRequest): Promise<Bill> {
     const [updated] = await db.update(bills).set(updates).where(eq(bills.id, id)).returning();
+    if (!updated) throw new Error("Bill not found");
     return updated;
   }
 
@@ -106,6 +107,7 @@ export class DatabaseStorage implements IStorage {
 
   async updatePayment(id: number, updates: UpdatePaymentRequest): Promise<Payment> {
     const [updated] = await db.update(payments).set(updates).where(eq(payments.id, id)).returning();
+    if (!updated) throw new Error("Payment not found");
     return updated;
   }
 
