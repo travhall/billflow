@@ -5,7 +5,7 @@ import {
   type UpdateBillRequest, type UpdatePaymentRequest,
   type CategoryBudget,
 } from "@shared/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, inArray } from "drizzle-orm";
 import { getNextCycleDueDate } from "@shared/date-utils";
 
 export interface IStorage {
@@ -92,17 +92,17 @@ export class DatabaseStorage implements IStorage {
     await db.delete(payments).where(eq(payments.id, id));
   }
 
-  async resetPayment(id: number): Promise<Payment> {
-    const [payment] = await db.select().from(payments).where(eq(payments.id, id));
+  async resetPayment(id: number, executor: typeof db = db): Promise<Payment> {
+    const [payment] = await executor.select().from(payments).where(eq(payments.id, id));
     if (!payment) throw new Error("Payment not found");
 
-    const [bill] = await db.select().from(bills).where(eq(bills.id, payment.billId));
+    const [bill] = await executor.select().from(bills).where(eq(bills.id, payment.billId));
     if (!bill) throw new Error("Bill not found");
 
     const currentDueDate = new Date(payment.dueDate);
     const nextDueDate = getNextCycleDueDate(currentDueDate, bill.frequency);
 
-    const [newPayment] = await db.insert(payments).values({
+    const [newPayment] = await executor.insert(payments).values({
       billId: payment.billId,
       amount: bill.defaultAmount,
       dueDate: nextDueDate,
