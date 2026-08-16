@@ -22,7 +22,7 @@ import {
 } from "recharts";
 import { format, parseISO, subMonths, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { TrendingUp, DollarSign, Calendar, Award, Pencil, Plus, X, Check, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { clsx } from "clsx";
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -78,6 +78,88 @@ export default function Analytics() {
 
   const isLoading = paymentsLoading || billsLoading || budgetsLoading;
 
+  const derived = useMemo(() => {
+    const paidPayments = (payments ?? []).filter(p => p.status === "paid" && p.paidDate);
+    const billMap = new Map((bills ?? []).map(b => [b.id, b]));
+    const budgetMap = new Map((budgets ?? []).map(b => [b.category, b]));
+
+    // ── Monthly spending: last 6 months ─────────────────────────────────────
+    const now = new Date();
+    const monthlyData = Array.from({ length: 6 }, (_, i) => {
+      const month = subMonths(now, 5 - i);
+      const start = startOfMonth(month);
+      const end = endOfMonth(month);
+      const total = sumAmounts(
+        paidPayments
+          .filter(p => {
+            const d = parseISO(p.paidDate as unknown as string);
+            return isWithinInterval(d, { start, end });
+          })
+          .map(p => p.amount)
+      );
+      return { month: format(month, "MMM"), total };
+    });
+
+    // ── Category breakdown ───────────────────────────────────────────────────
+    const categoryAmounts = new Map<string, string[]>();
+    paidPayments.forEach(p => {
+      const category = billMap.get(p.billId)?.category ?? "Other";
+      categoryAmounts.set(category, [...(categoryAmounts.get(category) ?? []), p.amount]);
+    });
+    const categoryData = Array.from(categoryAmounts.entries())
+      .map(([name, amounts]) => ({ name, value: sumAmounts(amounts) }))
+      .sort((a, b) => b.value - a.value);
+
+    // ── Summary stats ────────────────────────────────────────────────────────
+    const totalSpent = sumAmounts(paidPayments.map(p => p.amount));
+
+    const thisYear = now.getFullYear();
+    const totalThisYear = sumAmounts(
+      paidPayments
+        .filter(p => new Date(p.paidDate as unknown as string).getFullYear() === thisYear)
+        .map(p => p.amount)
+    );
+
+    const monthsWithData = monthlyData.filter(m => m.total > 0).length || 1;
+    const avgMonthly = monthlyData.reduce((sum, m) => sum + m.total, 0) / monthsWithData;
+
+    const billAmounts = new Map<number, string[]>();
+    paidPayments.forEach(p => {
+      billAmounts.set(p.billId, [...(billAmounts.get(p.billId) ?? []), p.amount]);
+    });
+    const billTotals = new Map(
+      Array.from(billAmounts.entries()).map(([billId, amounts]) => [billId, sumAmounts(amounts)])
+    );
+    let topBillName = "—";
+    let topBillAmount = 0;
+    billTotals.forEach((total, billId) => {
+      if (total > topBillAmount) {
+        topBillAmount = total;
+        topBillName = billMap.get(billId)?.name ?? "Unknown";
+      }
+    });
+
+    // ── Budget limits: this month's spending per category ───────────────────
+    const thisMonthStart = startOfMonth(now);
+    const thisMonthEnd = endOfMonth(now);
+    const thisMonthAmounts = new Map<string, string[]>();
+    paidPayments.forEach(p => {
+      if (!p.paidDate) return;
+      const d = parseISO(p.paidDate as unknown as string);
+      if (isWithinInterval(d, { start: thisMonthStart, end: thisMonthEnd })) {
+        const cat = billMap.get(p.billId)?.category ?? "Other";
+        thisMonthAmounts.set(cat, [...(thisMonthAmounts.get(cat) ?? []), p.amount]);
+      }
+    });
+    const thisMonthByCategory = new Map(
+      Array.from(thisMonthAmounts.entries()).map(([cat, amounts]) => [cat, sumAmounts(amounts)])
+    );
+
+    return { paidPayments, billMap, budgetMap, monthlyData, categoryData, totalSpent, totalThisYear, thisYear, avgMonthly, billTotals, topBillName, topBillAmount, thisMonthByCategory };
+  }, [payments, bills, budgets]);
+
+  const { paidPayments, billMap, budgetMap, monthlyData, categoryData, totalSpent, totalThisYear, thisYear, avgMonthly, billTotals, topBillName, topBillAmount, thisMonthByCategory } = derived;
+
   if (isLoading) {
     return (
       <Layout>
@@ -94,82 +176,6 @@ export default function Analytics() {
       </Layout>
     );
   }
-
-  const paidPayments = (payments ?? []).filter(p => p.status === "paid" && p.paidDate);
-  const billMap = new Map((bills ?? []).map(b => [b.id, b]));
-  const budgetMap = new Map((budgets ?? []).map(b => [b.category, b]));
-
-  // ── Monthly spending: last 6 months ─────────────────────────────────────
-  const now = new Date();
-  const monthlyData = Array.from({ length: 6 }, (_, i) => {
-    const month = subMonths(now, 5 - i);
-    const start = startOfMonth(month);
-    const end = endOfMonth(month);
-    const total = sumAmounts(
-      paidPayments
-        .filter(p => {
-          const d = parseISO(p.paidDate as unknown as string);
-          return isWithinInterval(d, { start, end });
-        })
-        .map(p => p.amount)
-    );
-    return { month: format(month, "MMM"), total };
-  });
-
-  // ── Category breakdown ───────────────────────────────────────────────────
-  const categoryAmounts = new Map<string, string[]>();
-  paidPayments.forEach(p => {
-    const category = billMap.get(p.billId)?.category ?? "Other";
-    categoryAmounts.set(category, [...(categoryAmounts.get(category) ?? []), p.amount]);
-  });
-  const categoryData = Array.from(categoryAmounts.entries())
-    .map(([name, amounts]) => ({ name, value: sumAmounts(amounts) }))
-    .sort((a, b) => b.value - a.value);
-
-  // ── Summary stats ────────────────────────────────────────────────────────
-  const totalSpent = sumAmounts(paidPayments.map(p => p.amount));
-
-  const thisYear = now.getFullYear();
-  const totalThisYear = sumAmounts(
-    paidPayments
-      .filter(p => new Date(p.paidDate as unknown as string).getFullYear() === thisYear)
-      .map(p => p.amount)
-  );
-
-  const monthsWithData = monthlyData.filter(m => m.total > 0).length || 1;
-  const avgMonthly = monthlyData.reduce((sum, m) => sum + m.total, 0) / monthsWithData;
-
-  const billAmounts = new Map<number, string[]>();
-  paidPayments.forEach(p => {
-    billAmounts.set(p.billId, [...(billAmounts.get(p.billId) ?? []), p.amount]);
-  });
-  const billTotals = new Map(
-    Array.from(billAmounts.entries()).map(([billId, amounts]) => [billId, sumAmounts(amounts)])
-  );
-  let topBillName = "—";
-  let topBillAmount = 0;
-  billTotals.forEach((total, billId) => {
-    if (total > topBillAmount) {
-      topBillAmount = total;
-      topBillName = billMap.get(billId)?.name ?? "Unknown";
-    }
-  });
-
-  // ── Budget limits: this month's spending per category ───────────────────
-  const thisMonthStart = startOfMonth(now);
-  const thisMonthEnd = endOfMonth(now);
-  const thisMonthAmounts = new Map<string, string[]>();
-  paidPayments.forEach(p => {
-    if (!p.paidDate) return;
-    const d = parseISO(p.paidDate as unknown as string);
-    if (isWithinInterval(d, { start: thisMonthStart, end: thisMonthEnd })) {
-      const cat = billMap.get(p.billId)?.category ?? "Other";
-      thisMonthAmounts.set(cat, [...(thisMonthAmounts.get(cat) ?? []), p.amount]);
-    }
-  });
-  const thisMonthByCategory = new Map(
-    Array.from(thisMonthAmounts.entries()).map(([cat, amounts]) => [cat, sumAmounts(amounts)])
-  );
 
   const allCategories = [...new Set((bills ?? []).map(b => b.category))].sort();
 
