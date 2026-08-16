@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { formatCurrency } from "@/lib/utils";
+import { sumAmounts } from "@/lib/money";
 import {
   BarChart,
   Bar,
@@ -104,40 +105,47 @@ export default function Analytics() {
     const month = subMonths(now, 5 - i);
     const start = startOfMonth(month);
     const end = endOfMonth(month);
-    const total = paidPayments
-      .filter(p => {
-        const d = parseISO(p.paidDate as unknown as string);
-        return isWithinInterval(d, { start, end });
-      })
-      .reduce((sum, p) => sum + Number(p.amount), 0);
+    const total = sumAmounts(
+      paidPayments
+        .filter(p => {
+          const d = parseISO(p.paidDate as unknown as string);
+          return isWithinInterval(d, { start, end });
+        })
+        .map(p => p.amount)
+    );
     return { month: format(month, "MMM"), total };
   });
 
   // ── Category breakdown ───────────────────────────────────────────────────
-  const categoryMap = new Map<string, number>();
+  const categoryAmounts = new Map<string, string[]>();
   paidPayments.forEach(p => {
     const category = billMap.get(p.billId)?.category ?? "Other";
-    categoryMap.set(category, (categoryMap.get(category) ?? 0) + Number(p.amount));
+    categoryAmounts.set(category, [...(categoryAmounts.get(category) ?? []), p.amount]);
   });
-  const categoryData = Array.from(categoryMap.entries())
-    .map(([name, value]) => ({ name, value }))
+  const categoryData = Array.from(categoryAmounts.entries())
+    .map(([name, amounts]) => ({ name, value: sumAmounts(amounts) }))
     .sort((a, b) => b.value - a.value);
 
   // ── Summary stats ────────────────────────────────────────────────────────
-  const totalSpent = paidPayments.reduce((sum, p) => sum + Number(p.amount), 0);
+  const totalSpent = sumAmounts(paidPayments.map(p => p.amount));
 
   const thisYear = now.getFullYear();
-  const totalThisYear = paidPayments
-    .filter(p => new Date(p.paidDate as unknown as string).getFullYear() === thisYear)
-    .reduce((sum, p) => sum + Number(p.amount), 0);
+  const totalThisYear = sumAmounts(
+    paidPayments
+      .filter(p => new Date(p.paidDate as unknown as string).getFullYear() === thisYear)
+      .map(p => p.amount)
+  );
 
   const monthsWithData = monthlyData.filter(m => m.total > 0).length || 1;
   const avgMonthly = monthlyData.reduce((sum, m) => sum + m.total, 0) / monthsWithData;
 
-  const billTotals = new Map<number, number>();
+  const billAmounts = new Map<number, string[]>();
   paidPayments.forEach(p => {
-    billTotals.set(p.billId, (billTotals.get(p.billId) ?? 0) + Number(p.amount));
+    billAmounts.set(p.billId, [...(billAmounts.get(p.billId) ?? []), p.amount]);
   });
+  const billTotals = new Map(
+    Array.from(billAmounts.entries()).map(([billId, amounts]) => [billId, sumAmounts(amounts)])
+  );
   let topBillName = "—";
   let topBillAmount = 0;
   billTotals.forEach((total, billId) => {
@@ -150,15 +158,18 @@ export default function Analytics() {
   // ── Budget limits: this month's spending per category ───────────────────
   const thisMonthStart = startOfMonth(now);
   const thisMonthEnd = endOfMonth(now);
-  const thisMonthByCategory = new Map<string, number>();
+  const thisMonthAmounts = new Map<string, string[]>();
   paidPayments.forEach(p => {
     if (!p.paidDate) return;
     const d = parseISO(p.paidDate as unknown as string);
     if (isWithinInterval(d, { start: thisMonthStart, end: thisMonthEnd })) {
       const cat = billMap.get(p.billId)?.category ?? "Other";
-      thisMonthByCategory.set(cat, (thisMonthByCategory.get(cat) ?? 0) + Number(p.amount));
+      thisMonthAmounts.set(cat, [...(thisMonthAmounts.get(cat) ?? []), p.amount]);
     }
   });
+  const thisMonthByCategory = new Map(
+    Array.from(thisMonthAmounts.entries()).map(([cat, amounts]) => [cat, sumAmounts(amounts)])
+  );
 
   const allCategories = [...new Set((bills ?? []).map(b => b.category))].sort();
 
