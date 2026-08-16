@@ -3,6 +3,7 @@ import { usePayments } from "@/hooks/use-payments";
 import { Layout } from "@/components/layout";
 import { StatsCards } from "@/components/stats-cards";
 import { CreateBillDialog, useCreateBillStore } from "@/components/create-bill-dialog";
+import { ImportBillsDialog } from "@/components/import-bills-dialog";
 import { MarkPaidDialog, useMarkPaidDialog } from "@/components/mark-paid-dialog";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { EditBillDialog } from "@/components/edit-bill-dialog";
@@ -442,7 +443,10 @@ export default function Dashboard() {
             <h1 className="text-3xl font-display font-bold text-foreground">Dashboard</h1>
             <p className="text-muted-foreground">Overview of your bills for {format(new Date(), 'MMMM yyyy')}</p>
           </div>
-          <CreateBillDialog />
+          <div className="flex items-center gap-2">
+            <ImportBillsDialog />
+            <CreateBillDialog />
+          </div>
         </div>
 
         {/* Overdue notification banner — real or demo */}
