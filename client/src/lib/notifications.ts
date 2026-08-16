@@ -1,5 +1,5 @@
 import { differenceInDays, parseISO, setDate, startOfDay } from "date-fns";
-import type { Bill, Payment } from "@shared/schema";
+import type { Bill, Payment, CategoryBudget } from "@shared/schema";
 import { getDueDateForMonth } from "@shared/date-utils";
 
 export type NotificationPermission = "granted" | "denied" | "default";
@@ -110,5 +110,43 @@ export function checkAndSendReminders(bills: Bill[], payments: Payment[]) {
         }
       }
     }
+  }
+}
+
+function getBudgetNotifiedKey(category: string): string {
+  return `billflow_notified_budget_${category}`;
+}
+
+export function checkBudgetOverages(payments: Payment[], bills: Bill[], budgets: CategoryBudget[]) {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  if (budgets.length === 0) return;
+
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const billMap = new Map(bills.map(b => [b.id, b]));
+  const spendByCategory = new Map<string, number>();
+
+  for (const p of payments) {
+    if (p.status !== "paid" || !p.paidDate) continue;
+    const paidDate = new Date(p.paidDate as unknown as string);
+    if (paidDate < monthStart) continue;
+    const category = billMap.get(p.billId)?.category ?? "Other";
+    spendByCategory.set(category, (spendByCategory.get(category) ?? 0) + Number(p.amount));
+  }
+
+  for (const budget of budgets) {
+    const spent = spendByCategory.get(budget.category) ?? 0;
+    const limit = Number(budget.monthlyLimit);
+    if (spent <= limit) continue;
+
+    const key = getBudgetNotifiedKey(budget.category);
+    if (wasNotifiedToday(key)) continue;
+
+    sendNotification(
+      `📊 Budget Exceeded: ${budget.category}`,
+      `You've spent $${spent.toFixed(2)} this month, over your $${limit.toFixed(2)} limit.`,
+      `budget-${budget.category}`
+    );
+    markNotifiedToday(key);
   }
 }
