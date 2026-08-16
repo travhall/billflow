@@ -80,19 +80,19 @@ app.use((req, res, next) => {
     await setupVite(httpServer, app);
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
+  // Binds to loopback only by default so the app isn't reachable from other
+  // devices on the network. Set HOST=0.0.0.0 in .env to opt into listening
+  // on all interfaces (e.g. to reach the app from another device on your
+  // LAN) — do this deliberately, since this app has no authentication.
   const port = parseInt(process.env.PORT || "5000", 10);
+  const host = process.env.HOST || "127.0.0.1";
   httpServer.listen(
     {
       port,
-      host: "0.0.0.0",
-      ...(process.env.REPL_ID ? { reusePort: true } : {}),
+      host,
     },
     () => {
-      log(`serving on port ${port}`);
+      log(`serving on port ${port}, bound to ${host}`);
     },
   );
 })();
