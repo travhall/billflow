@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, numeric } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, numeric, index } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -35,7 +35,9 @@ export const payments = pgTable("payments", {
   paidDate: timestamp("paid_date"),
   status: text("status", { enum: ["paid", "pending", "overdue"] }).default("pending").notNull(),
   notes: text("notes"),
-});
+}, (table) => ({
+  dueDateIdx: index("payments_due_date_idx").on(table.dueDate),
+}));
 
 export const billsRelations = relations(bills, ({ many }) => ({
   payments: many(payments),
