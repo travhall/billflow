@@ -72,17 +72,9 @@ export function MarkPaidDialog() {
     try {
       let savedPaymentId: number;
 
-      if (paymentId) {
-        // Update the existing pending payment record
-        await apiRequest("PUT", `/api/payments/${paymentId}`, {
-          amount,
-          paidDate: new Date(paidDate),
-          status: "paid",
-          notes: "",
-        });
-        savedPaymentId = paymentId;
-      } else {
-        // No existing payment record — create a new one
+      if (!paymentId) {
+        // No existing payment record — create it first (unavoidable second
+        // request, since there's no id yet to mark-paid-and-reset against).
         const res = await apiRequest("POST", "/api/payments", {
           billId: bill.id,
           amount,
@@ -93,11 +85,27 @@ export function MarkPaidDialog() {
         });
         const created = await res.json();
         savedPaymentId = created.id;
-      }
 
-      // Optionally reset for next cycle
-      if (resetCycle) {
-        await apiRequest("POST", `/api/payments/${savedPaymentId}/reset`);
+        if (resetCycle) {
+          await apiRequest("POST", `/api/payments/${savedPaymentId}/reset`);
+        }
+      } else {
+        // Existing pending payment — mark paid and (optionally) reset in one
+        // atomic server-side transaction.
+        savedPaymentId = paymentId;
+        if (resetCycle) {
+          await apiRequest("POST", `/api/payments/${savedPaymentId}/mark-paid-and-reset`, {
+            amount,
+            paidDate: new Date(paidDate),
+          });
+        } else {
+          await apiRequest("PUT", `/api/payments/${savedPaymentId}`, {
+            amount,
+            paidDate: new Date(paidDate),
+            status: "paid",
+            notes: "",
+          });
+        }
       }
 
       queryClient.invalidateQueries({ queryKey: ["/api/payments"] });
