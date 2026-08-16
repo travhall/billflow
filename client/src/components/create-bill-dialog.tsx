@@ -2,18 +2,15 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertBillSchema, type CreateBillRequest } from "@shared/schema";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
+import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { useCreateBill } from "@/hooks/use-bills";
-import { Plus, Bell } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useState } from "react";
 import { z } from "zod";
-import { requestNotificationPermission, getNotificationPermission } from "@/lib/notifications";
-import { Checkbox } from "@/components/ui/checkbox";
+import { getNotificationPermission } from "@/lib/notifications";
 import { create } from "zustand";
+import { BillFormFields } from "@/components/bill-form-fields";
 
 interface CreateBillStore {
   isOpen: boolean;
@@ -55,14 +52,6 @@ export function CreateBillDialog() {
     },
   });
 
-  const frequency = form.watch("frequency");
-
-  async function enableReminders() {
-    const result = await requestNotificationPermission();
-    setNotifPermission(result);
-    if (result === "granted") form.setValue("reminderDays", 3);
-  }
-
   function onSubmit(values: z.infer<typeof formSchema>) {
     createBill.mutate(values, {
       onSuccess: () => {
@@ -85,214 +74,15 @@ export function CreateBillDialog() {
           <DialogTitle className="text-xl font-display font-bold text-foreground">Add New Bill</DialogTitle>
           <p className="text-sm text-muted-foreground mt-1">Set up a recurring bill to track.</p>
         </div>
-        
+
         <div className="p-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Bill Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. Netflix, Rent" className="rounded-lg border-slate-200 focus:border-primary focus:ring-primary/20" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="category"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Category</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. Utilities" className="rounded-lg border-slate-200" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="defaultAmount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Default Amount ($)</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" placeholder="0.00" className="rounded-lg border-slate-200" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="frequency"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Frequency</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="rounded-lg border-slate-200">
-                            <SelectValue placeholder="Select frequency" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="monthly">Monthly</SelectItem>
-                          <SelectItem value="yearly">Yearly</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="dueDay"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Due Day</FormLabel>
-                      <FormControl>
-                        <Input type="number" min={1} max={31} className="rounded-lg border-slate-200" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {frequency === "yearly" && (
-                <FormField
-                  control={form.control}
-                  name="dueMonth"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Due Month</FormLabel>
-                      <Select onValueChange={(val) => field.onChange(parseInt(val))} defaultValue={field.value?.toString()}>
-                        <FormControl>
-                          <SelectTrigger className="rounded-lg border-slate-200">
-                            <SelectValue placeholder="Select month" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {Array.from({ length: 12 }, (_, i) => (
-                            <SelectItem key={i + 1} value={(i + 1).toString()}>
-                              {new Date(0, i).toLocaleString('default', { month: 'long' })}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-
-              <FormField
-                control={form.control}
-                name="isAutoPay"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-xl border border-border p-4 bg-muted/30">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Auto Pay</FormLabel>
-                      <div className="text-xs text-muted-foreground">
-                        Automatically reset cycle when due date passes
-                      </div>
-                    </div>
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="isVariable"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-xl border border-border p-4 bg-muted/30">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Variable Amount</FormLabel>
-                      <div className="text-xs text-muted-foreground">
-                        Does the amount change each bill?
-                      </div>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
-              {/* Reminder section */}
-              <div className="rounded-xl border border-border p-4 space-y-3 bg-muted/30">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Bell className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm font-medium text-foreground">Payment Reminder</span>
-                  </div>
-                  {notifPermission !== "granted" && (
-                    <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={enableReminders}>
-                      <Bell className="w-3 h-3" /> Enable
-                    </Button>
-                  )}
-                </div>
-                {notifPermission === "granted" ? (
-                  <FormField
-                    control={form.control}
-                    name="reminderDays"
-                    render={({ field }) => (
-                      <FormItem>
-                        <Select
-                          onValueChange={(val) => field.onChange(val === "none" ? null : parseInt(val))}
-                          value={field.value === null || field.value === undefined ? "none" : String(field.value)}
-                        >
-                          <FormControl>
-                            <SelectTrigger className="h-9 text-sm rounded-lg border-slate-200">
-                              <SelectValue placeholder="No reminder" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="none">No reminder</SelectItem>
-                            <SelectItem value="0">On the due date</SelectItem>
-                            <SelectItem value="1">1 day before</SelectItem>
-                            <SelectItem value="3">3 days before</SelectItem>
-                            <SelectItem value="5">5 days before</SelectItem>
-                            <SelectItem value="7">1 week before</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    {notifPermission === "denied"
-                      ? "Notifications are blocked. Allow them in your browser settings."
-                      : "Get notified before bills are due. Click Enable to allow notifications."}
-                  </p>
-                )}
-              </div>
+              <BillFormFields form={form} notifPermission={notifPermission} onNotifPermissionChange={setNotifPermission} />
 
               <div className="pt-2">
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   className="w-full rounded-xl py-6 font-semibold bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20"
                   disabled={createBill.isPending}
                 >
