@@ -29,7 +29,7 @@ and update your row when done.
 | 013  | Remove unused passport/session dependency stack | P2 | S | LOW | — | TODO |
 | 014  | Extend shared API contract to cover budgets, migrate bypassing hooks | P2 | M | LOW | — | TODO |
 | 015  | Extract shared bill-form component to deduplicate dialogs | P3 | L | MED | 014 | TODO |
-| 016  | Trim phantom (never-installed) packages from build allowlist | P3 | S | LOW | — | TODO |
+| 016  | Trim phantom (never-installed) packages from build allowlist | P3 | S | LOW | — | DONE (removed 11 never-installed entries — `@google/generative-ai`, `axios`, `cors`, `express-rate-limit`, `jsonwebtoken`, `multer`, `nodemailer`, `openai`, `stripe`, `uuid`, `xlsx` — from `allowlist` in `script/build.ts`; `pnpm check` shows same 32-error pre-existing baseline, none in `script/build.ts`; `pnpm build` exits 0, `dist/index.cjs` and `dist/public/` produced) |
 | 017  | Remove unused `attached_assets/` directory and Vite alias | P3 | S | LOW | — | TODO |
 | 018  | Relax exact TypeScript version pin to a caret range | P3 | S | LOW | — | PARTIAL (pin relaxed to `^7.0.2`, committed `18059d2`; approved out-of-scope fix removed tsconfig.json `baseUrl` TS5102 blocker, committed `da06352` — `pnpm check` still exits 1 on ~41 pre-existing unrelated errors across 9 files, same batch 001 flagged, not this plan's scope) |
 | 019  | Add Vitest test harness and CI workflow | P1 | M | LOW | — | TODO |
