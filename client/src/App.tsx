@@ -4,16 +4,17 @@ import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
-import Dashboard from "@/pages/dashboard";
-import History from "@/pages/history";
-import Upcoming from "@/pages/upcoming";
-import Analytics from "@/pages/analytics";
 import NotFound from "@/pages/not-found";
 import { InstallPrompt } from "@/components/install-prompt";
 import { ErrorBoundary } from "@/components/error-boundary";
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { checkAndSendReminders } from "@/lib/notifications";
 import type { Bill, Payment } from "@shared/schema";
+
+const Dashboard = lazy(() => import("@/pages/dashboard"));
+const History = lazy(() => import("@/pages/history"));
+const Upcoming = lazy(() => import("@/pages/upcoming"));
+const Analytics = lazy(() => import("@/pages/analytics"));
 
 function NotificationRunner() {
   const { data: bills } = useQuery<Bill[]>({ queryKey: ["/api/bills"] });
@@ -30,13 +31,15 @@ function NotificationRunner() {
 
 function Router() {
   return (
-    <Switch>
-      <Route path="/" component={Dashboard} />
-      <Route path="/history" component={History} />
-      <Route path="/upcoming" component={Upcoming} />
-      <Route path="/analytics" component={Analytics} />
-      <Route component={NotFound} />
-    </Switch>
+    <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading…</div>}>
+      <Switch>
+        <Route path="/" component={Dashboard} />
+        <Route path="/history" component={History} />
+        <Route path="/upcoming" component={Upcoming} />
+        <Route path="/analytics" component={Analytics} />
+        <Route component={NotFound} />
+      </Switch>
+    </Suspense>
   );
 }
 
