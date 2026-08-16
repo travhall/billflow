@@ -24,6 +24,7 @@ export interface IStorage {
   deletePayment(id: number): Promise<void>;
   resetPayment(id: number): Promise<Payment>;
   revertPayment(id: number): Promise<Payment>;
+  markPaidAndReset(id: number, updates: { amount: string; paidDate: Date }): Promise<{ paid: Payment; next: Payment }>;
 
   getBudgets(): Promise<CategoryBudget[]>;
   upsertBudget(category: string, monthlyLimit: string): Promise<CategoryBudget>;
@@ -133,6 +134,19 @@ export class DatabaseStorage implements IStorage {
     }).returning();
 
     return newPayment;
+  }
+
+  async markPaidAndReset(id: number, updates: { amount: string; paidDate: Date }): Promise<{ paid: Payment; next: Payment }> {
+    return await db.transaction(async (tx) => {
+      const [paid] = await tx.update(payments)
+        .set({ amount: updates.amount, paidDate: updates.paidDate, status: "paid", notes: "" })
+        .where(eq(payments.id, id))
+        .returning();
+      if (!paid) throw new Error("Payment not found");
+
+      const next = await this.resetPayment(id, tx);
+      return { paid, next };
+    });
   }
 
   async revertPayment(id: number): Promise<Payment> {
