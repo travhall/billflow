@@ -5,7 +5,7 @@ import {
   type UpdateBillRequest, type UpdatePaymentRequest,
   type CategoryBudget,
 } from "@shared/schema";
-import { eq, desc, inArray } from "drizzle-orm";
+import { eq, desc, inArray, and, ne } from "drizzle-orm";
 import { getNextCycleDueDate } from "@shared/date-utils";
 
 type Executor = Parameters<Parameters<typeof db.transaction>[0]>[0] | typeof db;
@@ -82,9 +82,11 @@ export class DatabaseStorage implements IStorage {
 
     await db.transaction(async (tx) => {
       for (const payment of autoPayPayments) {
-        await tx.update(payments)
+        const updated = await tx.update(payments)
           .set({ status: "paid", paidDate: new Date() })
-          .where(eq(payments.id, payment.id));
+          .where(and(eq(payments.id, payment.id), ne(payments.status, "paid")))
+          .returning();
+        if (updated.length === 0) continue; // another concurrent request already claimed it
         await this.resetPayment(payment.id, tx);
       }
     });
