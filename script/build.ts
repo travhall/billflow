@@ -5,24 +5,13 @@ import { rm, readFile } from "fs/promises";
 // server deps to bundle to reduce openat(2) syscalls
 // which helps cold start times
 const allowlist = [
-  "@google/generative-ai",
-  "axios",
-  "cors",
   "date-fns",
   "drizzle-orm",
   "drizzle-zod",
   "express",
-  "express-rate-limit",
-  "jsonwebtoken",
-  "multer",
   "nanoid",
-  "nodemailer",
-  "openai",
   "pg",
-  "stripe",
-  "uuid",
   "ws",
-  "xlsx",
   "zod",
   "zod-validation-error",
 ];
