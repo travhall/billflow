@@ -133,6 +133,25 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/payments/:id/mark-paid-and-reset", async (req, res) => {
+    try {
+      const input = z.object({
+        amount: z.string(),
+        paidDate: z.coerce.date(),
+      }).parse(req.body);
+      const result = await storage.markPaidAndReset(Number(req.params.id), input);
+      res.json(result);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.issues[0].message });
+      }
+      if (err instanceof Error && err.message === "Payment not found") {
+        return res.status(404).json({ message: err.message });
+      }
+      throw err;
+    }
+  });
+
   // Category budgets
   app.get("/api/budgets", async (_req, res) => {
     const budgets = await storage.getBudgets();
