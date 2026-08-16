@@ -8,8 +8,8 @@ import NotFound from "@/pages/not-found";
 import { InstallPrompt } from "@/components/install-prompt";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { lazy, Suspense, useEffect } from "react";
-import { checkAndSendReminders } from "@/lib/notifications";
-import type { Bill, Payment } from "@shared/schema";
+import { checkAndSendReminders, checkBudgetOverages } from "@/lib/notifications";
+import type { Bill, Payment, CategoryBudget } from "@shared/schema";
 
 const Dashboard = lazy(() => import("@/pages/dashboard"));
 const History = lazy(() => import("@/pages/history"));
@@ -19,12 +19,16 @@ const Analytics = lazy(() => import("@/pages/analytics"));
 function NotificationRunner() {
   const { data: bills } = useQuery<Bill[]>({ queryKey: ["/api/bills"] });
   const { data: payments } = useQuery<Payment[]>({ queryKey: ["/api/payments"] });
+  const { data: budgets } = useQuery<CategoryBudget[]>({ queryKey: ["/api/budgets"] });
 
   useEffect(() => {
     if (bills && payments) {
       checkAndSendReminders(bills, payments);
     }
-  }, [bills, payments]);
+    if (bills && payments && budgets) {
+      checkBudgetOverages(payments, bills, budgets);
+    }
+  }, [bills, payments, budgets]);
 
   return null;
 }
