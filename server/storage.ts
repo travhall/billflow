@@ -134,10 +134,40 @@ export class DatabaseStorage implements IStorage {
   }
 
   async revertPayment(id: number): Promise<Payment> {
+    const [payment] = await db.select().from(payments).where(eq(payments.id, id));
+    if (!payment) throw new Error("Payment not found");
+
+    const [bill] = await db.select().from(bills).where(eq(bills.id, payment.billId));
+    if (!bill) throw new Error("Bill not found");
+
+    // If this payment was previously marked paid with "reset for next
+    // cycle", resetPayment() inserted a fresh pending payment for the same
+    // bill dated at the next cycle's due date. There is no direct link
+    // between the two rows, so find it by matching billId + status +
+    // the expected next due date, and remove it — mirroring what
+    // TEST_PLAN.md:55 documents as the expected Undo behavior.
+    const currentDueDate = new Date(payment.dueDate);
+    const expectedNextDueDate = getNextCycleDueDate(currentDueDate, bill.frequency);
+
+    const candidateNextPayments = await db.select().from(payments).where(
+      and(
+        eq(payments.billId, payment.billId),
+        eq(payments.status, "pending"),
+      )
+    );
+    const nextCyclePayment = candidateNextPayments.find(
+      (p) => new Date(p.dueDate).getTime() === expectedNextDueDate.getTime()
+    );
+
     const [updated] = await db.update(payments)
       .set({ status: "pending", paidDate: null })
       .where(eq(payments.id, id))
       .returning();
+
+    if (nextCyclePayment) {
+      await db.delete(payments).where(eq(payments.id, nextCyclePayment.id));
+    }
+
     return updated;
   }
 
