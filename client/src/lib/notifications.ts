@@ -1,5 +1,6 @@
-import { differenceInDays, parseISO, setDate, setMonth, startOfDay } from "date-fns";
+import { differenceInDays, parseISO, setDate, startOfDay } from "date-fns";
 import type { Bill, Payment } from "@shared/schema";
+import { getDueDateForMonth } from "@shared/date-utils";
 
 export type NotificationPermission = "granted" | "denied" | "default";
 
@@ -26,10 +27,8 @@ function sendNotification(title: string, body: string, tag: string) {
 }
 
 function getBillDueDate(bill: Bill, today: Date): Date {
-  if (bill.frequency === "yearly" && bill.dueMonth) {
-    return setMonth(setDate(new Date(today.getFullYear(), 0, 1), bill.dueDay), bill.dueMonth - 1);
-  }
-  return setDate(startOfDay(new Date(today.getFullYear(), today.getMonth(), 1)), bill.dueDay);
+  const due = getDueDateForMonth(bill, today);
+  return due ?? setDate(startOfDay(new Date(today.getFullYear(), today.getMonth(), 1)), bill.dueDay);
 }
 
 function getLastNotifiedKey(billId: number, type: "reminder" | "overdue"): string {
