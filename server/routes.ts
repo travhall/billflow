@@ -43,8 +43,8 @@ export async function registerRoutes(
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({
-          message: err.errors[0].message,
-          field: err.errors[0].path.join('.'),
+          message: err.issues[0].message,
+          field: err.issues[0].path.join('.'),
         });
       }
       throw err;
@@ -59,12 +59,9 @@ export async function registerRoutes(
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({
-          message: err.errors[0].message,
-          field: err.errors[0].path.join('.'),
+          message: err.issues[0].message,
+          field: err.issues[0].path.join('.'),
         });
-      }
-      if (err instanceof Error && err.message === "Bill not found") {
-        return res.status(404).json({ message: err.message });
       }
       throw err;
     }
@@ -89,8 +86,8 @@ export async function registerRoutes(
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({
-          message: err.errors[0].message,
-          field: err.errors[0].path.join('.'),
+          message: err.issues[0].message,
+          field: err.issues[0].path.join('.'),
         });
       }
       throw err;
@@ -105,12 +102,9 @@ export async function registerRoutes(
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({
-          message: err.errors[0].message,
-          field: err.errors[0].path.join('.'),
+          message: err.issues[0].message,
+          field: err.issues[0].path.join('.'),
         });
-      }
-      if (err instanceof Error && err.message === "Payment not found") {
-        return res.status(404).json({ message: err.message });
       }
       throw err;
     }
@@ -155,7 +149,7 @@ export async function registerRoutes(
       res.status(201).json(budget);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.errors[0].message });
+        return res.status(400).json({ message: err.issues[0].message });
       }
       throw err;
     }
