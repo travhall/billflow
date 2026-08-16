@@ -28,7 +28,23 @@ DUMP_FILE="$BACKUP_DIR/billflow-$TIMESTAMP.sql.gz"
 REMOTE="billflow-r2:billflow-backups"
 RETENTION_DAYS=30
 
-pg_dump "$DATABASE_URL" | gzip > "$DUMP_FILE"
+# Parse DATABASE_URL (postgresql://user:pass@host:port/db?params) into
+# parts, so the password never appears as a process argument. Using a
+# temporary PGPASSFILE instead of embedding it in argv or leaving it in a
+# plain env var for the process's whole lifetime.
+DB_USER=$(echo "$DATABASE_URL" | sed -E 's#^postgresql://([^:]+):.*#\1#')
+DB_PASS=$(echo "$DATABASE_URL" | sed -E 's#^postgresql://[^:]+:([^@]+)@.*#\1#')
+DB_HOST=$(echo "$DATABASE_URL" | sed -E 's#^postgresql://[^@]+@([^:/]+).*#\1#')
+DB_PORT=$(echo "$DATABASE_URL" | sed -E 's#.*@[^:/]+(:([0-9]+))?/.*#\2#')
+DB_NAME=$(echo "$DATABASE_URL" | sed -E 's#.*/([^/?]+)(\?.*)?$#\1#')
+DB_PORT="${DB_PORT:-5432}"
+
+PGPASS_FILE=$(mktemp)
+chmod 600 "$PGPASS_FILE"
+echo "${DB_HOST}:${DB_PORT}:${DB_NAME}:${DB_USER}:${DB_PASS}" > "$PGPASS_FILE"
+trap 'rm -f "$PGPASS_FILE"' EXIT
+
+PGPASSFILE="$PGPASS_FILE" pg_dump -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" | gzip > "$DUMP_FILE"
 
 rclone copy "$DUMP_FILE" "$REMOTE/"
 
