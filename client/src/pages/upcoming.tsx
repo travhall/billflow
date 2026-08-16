@@ -11,13 +11,12 @@ import {
   isBefore,
   parseISO,
   format,
-  isSameMonth,
-  isSameYear,
 } from "date-fns";
 import { type Bill, type Payment } from "@shared/schema";
 import { getDueDateForMonth } from "@shared/date-utils";
 import { formatCurrency } from "@/lib/utils";
 import { CalendarClock, TrendingUp } from "lucide-react";
+import { useMemo } from "react";
 
 function getMonthDueDate(bill: Bill, monthDate: Date): Date | null {
   // Yearly bills only occur in their due month; getDueDateForMonth always
@@ -27,14 +26,6 @@ function getMonthDueDate(bill: Bill, monthDate: Date): Date | null {
     return null;
   }
   return getDueDateForMonth(bill, monthDate);
-}
-
-function getPaymentForMonth(payments: Payment[], billId: number, monthDate: Date): Payment | undefined {
-  return payments.find((p) => {
-    if (p.billId !== billId) return false;
-    const d = parseISO(p.dueDate as unknown as string);
-    return isSameMonth(d, monthDate) && isSameYear(d, monthDate);
-  });
 }
 
 interface MonthColumnProps {
@@ -48,12 +39,23 @@ interface MonthColumnProps {
 function MonthColumn({ monthDate, bills, payments, today, isCurrentMonth }: MonthColumnProps) {
   const activeBills = bills.filter((b) => !b.archived);
 
+  const paymentsByBillAndMonth = useMemo(() => {
+    const map = new Map<string, Payment>();
+    for (const p of payments) {
+      const d = parseISO(p.dueDate as unknown as string);
+      const key = `${p.billId}-${d.getFullYear()}-${d.getMonth()}`;
+      map.set(key, p);
+    }
+    return map;
+  }, [payments]);
+
   const rows = activeBills
     .map((bill) => {
       const dueDate = getMonthDueDate(bill, monthDate);
       if (!dueDate) return null;
 
-      const payment = getPaymentForMonth(payments, bill.id, monthDate);
+      const key = `${bill.id}-${monthDate.getFullYear()}-${monthDate.getMonth()}`;
+      const payment = paymentsByBillAndMonth.get(key);
       let status: "paid" | "overdue" | "pending" | "upcoming";
       let amount = payment?.amount ?? bill.defaultAmount;
 
