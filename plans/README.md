@@ -35,7 +35,7 @@ and update your row when done.
 | 019  | Add Vitest test harness and CI workflow | P1 | M | LOW | — | DONE (vitest.config.ts + shared/date-utils.test.ts + .github/workflows/ci.yml added, `pnpm test` passes 3/3; CI workflow YAML not executable locally, unverified on GitHub infra; post-merge fix: original `exclude: ["node_modules", "dist"]` didn't glob-match nested paths, so `pnpm test` hung scanning 350+ unrelated `*.test.ts` files inside `node_modules` and every chip's `.claude/worktrees/*` checkout — changed to `["**/node_modules/**", "**/dist/**", "**/.claude/**"]`) |
 | 020  | Add Budgets & Analytics section to manual test plan | P2 | S | LOW | — | TODO |
 | 021  | Add CLAUDE.md, fix stale claims in replit.md | P2 | S | LOW | — | TODO |
-| 022  | Add `.env.example` | P2 | S | LOW | — | TODO |
+| 022  | Add `.env.example` | P2 | S | LOW | — | DONE (`.env.example` created at repo root with `DATABASE_URL`, `PORT`, `HOST`, `NODE_ENV`; drift check found `server/index.ts` had gained a `HOST` env var since the plan was written, added it too; confirmed not git-ignored — `.gitignore:3`'s `.env` pattern is exact, not `.env*`; branched `advisor/022-add-env-example` off `main`) |
 | 023  | Add ESLint and Prettier | P3 | S | LOW | — | TODO |
 | 024  | Add index on `payments.dueDate` | P3 | S | LOW | — | TODO |
 | 025  | Memoize derived data in Analytics and Upcoming | P3 | S | LOW | — | TODO |
