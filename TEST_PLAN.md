@@ -100,3 +100,18 @@ Click it to open the Feature Demo panel, which lets you trigger the overdue bann
 | 8a | Click the trash icon on a bill | Confirmation dialog appears |
 | 8b | Cancel | Bill remains |
 | 8c | Confirm delete | Bill disappears from the list (archived) |
+
+---
+
+## 9. Budgets & Analytics
+
+| Step | Action | Expected result |
+|------|--------|-----------------|
+| 9a | Go to the Analytics page | Summary cards, monthly chart, category donut, and budget limits section all load |
+| 9b | Click the **+** next to a category with no limit set | Inline input appears |
+| 9c | Enter an amount and submit | Limit saves; progress bar appears showing this month's spend vs. the limit |
+| 9d | Spend past the limit for that category (mark a bill in that category paid) | Progress bar turns red; "Over by $X this month" text appears |
+| 9e | Click the pencil icon on an existing limit | Inline input appears pre-filled with the current limit |
+| 9f | Change the amount and save | Limit updates; progress bar recalculates |
+| 9g | Click the trash icon while editing a limit | Confirmation not required — limit is removed immediately (hard delete, not archived) |
+| 9h | Reload the page after removing a limit | Category shows "No limit set — click + to add one" again |
