@@ -63,7 +63,7 @@ function MonthColumn({ monthDate, bills, payments, today, isCurrentMonth }: Mont
         status = "paid";
       } else if (isBefore(dueDate, today) && !payment) {
         status = isCurrentMonth ? "overdue" : "upcoming";
-      } else if (isBefore(dueDate, today) && payment?.status !== "paid") {
+      } else if (isBefore(dueDate, today)) {
         status = "overdue";
       } else {
         status = isCurrentMonth ? "pending" : "upcoming";

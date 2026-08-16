@@ -63,7 +63,7 @@ export function MarkPaidDialog() {
       queryClient.setQueryData<Payment[]>(["/api/payments"], (old) =>
         old?.map((p) =>
           p.id === paymentId
-            ? { ...p, status: "paid" as const, paidDate: new Date(paidDate).toISOString() }
+            ? { ...p, status: "paid" as const, paidDate: new Date(paidDate).toISOString() as unknown as Date }
             : p
         ) ?? []
       );

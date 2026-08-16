@@ -37,7 +37,7 @@ export function CreateBillDialog() {
   const [notifPermission, setNotifPermission] = useState(getNotificationPermission());
   const createBill = useCreateBill();
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<z.input<typeof formSchema>, any, z.output<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
@@ -52,7 +52,7 @@ export function CreateBillDialog() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  function onSubmit(values: z.output<typeof formSchema>) {
     createBill.mutate(values, {
       onSuccess: () => {
         closeDialog();

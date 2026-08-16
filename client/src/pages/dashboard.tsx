@@ -487,7 +487,7 @@ export default function Dashboard() {
                   {processedData.overdueBills.map((item) => (
                     <button
                       key={item.bill.id}
-                      onClick={() => openDialog(item.bill, item.paymentId)}
+                      onClick={() => openDialog(item.bill, item.dueDate, item.paymentId)}
                       data-testid={`button-pay-overdue-${item.bill.id}`}
                       className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 transition-colors"
                     >

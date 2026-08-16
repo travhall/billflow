@@ -210,6 +210,9 @@ importers:
       '@types/node':
         specifier: 26.2.0
         version: 26.2.0
+      '@types/pg':
+        specifier: ^8.21.0
+        version: 8.21.0
       '@types/react':
         specifier: ^19.2.18
         version: 19.2.18
@@ -6527,7 +6530,6 @@ snapshots:
       '@types/node': 26.2.0
       pg-protocol: 1.16.0
       pg-types: 2.2.0
-    optional: true
 
   '@types/qs@6.15.1': {}
 
