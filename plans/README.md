@@ -23,7 +23,7 @@ and update your row when done.
 | 007  | Remove dead post-response throw in error middleware | P2 | S | LOW | — | TODO |
 | 008  | Fix `appinstalled` listener cleanup leak | P3 | S | LOW | — | DONE (`client/src/components/install-prompt.tsx`'s effect now names the `appinstalled` handler `onInstalled` and removes it in cleanup, matching the existing `beforeinstallprompt`/`handler` pair; `pnpm check` shows the same 33-error pre-existing baseline, none in this file; no automated test exists for PWA install events, so verification is `pnpm check` plus manual code review confirming both `addEventListener` calls have a matching `removeEventListener` on the same function identity) |
 | 009  | Restrict Vite dev server `allowedHosts` | P1 | S | LOW | — | TODO |
-| 010  | Restrict file permissions on nightly DB backup | P1 | S | LOW | — | TODO |
+| 010  | Restrict file permissions on nightly DB backup | P1 | S | LOW | — | BLOCKED (`umask 077` + `chmod 700 "$BACKUP_DIR"` added to `script/backup-db.sh`, `bash -n` passes; live-run verification in Step 3 blocked — no `.env`/`DATABASE_URL` reachable in this environment, so the actual permission check on a real dump couldn't run; committed on branch `advisor/010-harden-backup-file-permissions`; re-run Step 3 where `DATABASE_URL` is reachable to close out) |
 | 011  | Default server bind to loopback, opt-in via `HOST` env var | P2 | S | MED | — | TODO |
 | 012  | Stop passing DB connection string as `pg_dump` argv | P2 | S | LOW | — | TODO |
 | 013  | Remove unused passport/session dependency stack | P2 | S | LOW | — | TODO |

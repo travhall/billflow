@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+umask 077
 
 cd "$(dirname "$0")/.."
 
@@ -13,6 +14,7 @@ export PATH="/opt/homebrew/opt/postgresql@18/bin:/opt/homebrew/bin:/usr/local/bi
 
 BACKUP_DIR="/tmp/billflow-backups"
 mkdir -p "$BACKUP_DIR"
+chmod 700 "$BACKUP_DIR"
 LAST_RUN_MARKER="$BACKUP_DIR/.last-run"
 TODAY=$(date +%Y%m%d)
 
