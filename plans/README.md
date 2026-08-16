@@ -32,7 +32,7 @@ and update your row when done.
 | 016  | Trim phantom (never-installed) packages from build allowlist | P3 | S | LOW | — | TODO |
 | 017  | Remove unused `attached_assets/` directory and Vite alias | P3 | S | LOW | — | TODO |
 | 018  | Relax exact TypeScript version pin to a caret range | P3 | S | LOW | — | PARTIAL (pin relaxed to `^7.0.2`, committed `18059d2`; approved out-of-scope fix removed tsconfig.json `baseUrl` TS5102 blocker, committed `da06352` — `pnpm check` still exits 1 on ~41 pre-existing unrelated errors across 9 files, same batch 001 flagged, not this plan's scope) |
-| 019  | Add Vitest test harness and CI workflow | P1 | M | LOW | — | TODO |
+| 019  | Add Vitest test harness and CI workflow | P1 | M | LOW | — | DONE (vitest.config.ts + shared/date-utils.test.ts + .github/workflows/ci.yml added, `pnpm test` passes 3/3; CI workflow YAML not executable locally, unverified on GitHub infra) |
 | 020  | Add Budgets & Analytics section to manual test plan | P2 | S | LOW | — | TODO |
 | 021  | Add CLAUDE.md, fix stale claims in replit.md | P2 | S | LOW | — | TODO |
 | 022  | Add `.env.example` | P2 | S | LOW | — | TODO |
