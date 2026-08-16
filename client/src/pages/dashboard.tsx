@@ -14,6 +14,7 @@ import { clsx } from "clsx";
 import { type Bill } from "@shared/schema";
 import { startOfMonth, endOfMonth, isSameMonth, isSameYear, parseISO, isBefore, startOfDay, format } from "date-fns";
 import { getDueDateForMonth } from "@shared/date-utils";
+import { sumAmounts } from "@/lib/money";
 import { useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
@@ -200,13 +201,13 @@ export default function Dashboard() {
       item.bill.frequency === "yearly"
     );
 
-    const totalDue = monthlyBillStatuses.reduce((acc, item) => acc + Number(item.bill.defaultAmount), 0);
-    const totalPaid = monthlyBillStatuses
-      .filter(item => item.status === "paid")
-      .reduce((acc, item) => acc + Number(item.amount), 0);
-    const totalPending = monthlyBillStatuses
-      .filter(item => item.status !== "paid")
-      .reduce((acc, item) => acc + Number(item.bill.defaultAmount), 0);
+    const totalDue = sumAmounts(monthlyBillStatuses.map(item => item.bill.defaultAmount));
+    const totalPaid = sumAmounts(
+      monthlyBillStatuses.filter(item => item.status === "paid").map(item => item.amount)
+    );
+    const totalPending = sumAmounts(
+      monthlyBillStatuses.filter(item => item.status !== "paid").map(item => item.bill.defaultAmount)
+    );
     const overdueCount = monthlyBillStatuses.filter(item => item.status === "overdue").length;
 
     // Default sorts then apply user sort
