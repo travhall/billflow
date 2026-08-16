@@ -8,6 +8,8 @@ import {
 import { eq, desc, inArray } from "drizzle-orm";
 import { getNextCycleDueDate } from "@shared/date-utils";
 
+type Executor = Parameters<Parameters<typeof db.transaction>[0]>[0] | typeof db;
+
 export interface IStorage {
   getBills(): Promise<Bill[]>;
   getBill(id: number): Promise<Bill | undefined>;
@@ -54,23 +56,40 @@ export class DatabaseStorage implements IStorage {
 
   async getPayments(): Promise<Payment[]> {
     const allPayments = await db.select().from(payments).orderBy(desc(payments.dueDate));
-    
-    // Auto-pay logic: check if any pending/overdue payments for auto-pay bills have passed their due date
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    for (const payment of allPayments) {
-      if (payment.status !== "paid" && new Date(payment.dueDate) < today) {
-        const [bill] = await db.select().from(bills).where(eq(bills.id, payment.billId));
-        if (bill && bill.isAutoPay) {
-          await db.update(payments)
-            .set({ status: "paid", paidDate: new Date() })
-            .where(eq(payments.id, payment.id));
-          await this.resetPayment(payment.id);
-        }
-      }
+    const overduePending = allPayments.filter(
+      (p) => p.status !== "paid" && new Date(p.dueDate) < today
+    );
+
+    if (overduePending.length === 0) {
+      return allPayments;
     }
 
+    // Batch-fetch the bills for every overdue payment in one query instead
+    // of one query per payment.
+    const billIds = Array.from(new Set(overduePending.map((p) => p.billId)));
+    const relevantBills = await db.select().from(bills).where(inArray(bills.id, billIds));
+    const billsById = new Map(relevantBills.map((b) => [b.id, b]));
+
+    const autoPayPayments = overduePending.filter((p) => billsById.get(p.billId)?.isAutoPay);
+
+    if (autoPayPayments.length === 0) {
+      return allPayments;
+    }
+
+    await db.transaction(async (tx) => {
+      for (const payment of autoPayPayments) {
+        await tx.update(payments)
+          .set({ status: "paid", paidDate: new Date() })
+          .where(eq(payments.id, payment.id));
+        await this.resetPayment(payment.id, tx);
+      }
+    });
+
+    // Only re-query if something actually changed.
     return await db.select().from(payments).orderBy(desc(payments.dueDate));
   }
 
@@ -92,7 +111,7 @@ export class DatabaseStorage implements IStorage {
     await db.delete(payments).where(eq(payments.id, id));
   }
 
-  async resetPayment(id: number, executor: typeof db = db): Promise<Payment> {
+  async resetPayment(id: number, executor: Executor = db): Promise<Payment> {
     const [payment] = await executor.select().from(payments).where(eq(payments.id, id));
     if (!payment) throw new Error("Payment not found");
 
