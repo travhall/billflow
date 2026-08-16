@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertBillSchema, insertPaymentSchema, bills, payments } from './schema';
+import { insertBillSchema, insertPaymentSchema, insertCategoryBudgetSchema, bills, payments, categoryBudgets } from './schema';
 
 export const errorSchemas = {
   validation: z.object({
@@ -79,6 +79,32 @@ export const api = {
     delete: {
       method: 'DELETE' as const,
       path: '/api/payments/:id',
+      responses: {
+        204: z.void(),
+        404: errorSchemas.notFound,
+      },
+    },
+  },
+  budgets: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/budgets',
+      responses: {
+        200: z.array(z.custom<typeof categoryBudgets.$inferSelect>()),
+      },
+    },
+    upsert: {
+      method: 'POST' as const,
+      path: '/api/budgets',
+      input: insertCategoryBudgetSchema,
+      responses: {
+        201: z.custom<typeof categoryBudgets.$inferSelect>(),
+        400: errorSchemas.validation,
+      },
+    },
+    delete: {
+      method: 'DELETE' as const,
+      path: '/api/budgets/:id',
       responses: {
         204: z.void(),
         404: errorSchemas.notFound,

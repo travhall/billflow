@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertBillSchema, type Bill } from "@shared/schema";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useUpdateBill } from "@/hooks/use-bills";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -41,6 +41,7 @@ export function EditBillDialog({ bill, trigger }: EditBillDialogProps) {
   const [open, setOpen] = useState(false);
   const [notifPermission, setNotifPermission] = useState(getNotificationPermission());
   const { toast } = useToast();
+  const updateBill = useUpdateBill();
 
   const form = useForm({
     resolver: zodResolver(insertBillSchema),
@@ -69,22 +70,11 @@ export function EditBillDialog({ bill, trigger }: EditBillDialogProps) {
     }
   }
 
-  const onSubmit = async (data: any) => {
-    try {
-      await apiRequest("PUT", `/api/bills/${bill.id}`, data);
-      queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
-      toast({
-        title: "Success",
-        description: "Bill updated successfully",
-      });
-      setOpen(false);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update bill",
-        variant: "destructive",
-      });
-    }
+  const onSubmit = (data: any) => {
+    updateBill.mutate(
+      { id: bill.id, data },
+      { onSuccess: () => setOpen(false) }
+    );
   };
 
   return (
