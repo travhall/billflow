@@ -12,7 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { clsx } from "clsx";
 import { type Bill } from "@shared/schema";
-import { startOfMonth, endOfMonth, setDate, setMonth, isSameMonth, isSameYear, parseISO, isBefore, startOfDay, format } from "date-fns";
+import { startOfMonth, endOfMonth, isSameMonth, isSameYear, parseISO, isBefore, startOfDay, format } from "date-fns";
+import { getDueDateForMonth } from "@shared/date-utils";
 import { useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
@@ -132,10 +133,7 @@ export default function Dashboard() {
       }
 
       // Calculate current period's expected due date
-      let currentPeriodDueDate = setDate(currentMonthStart, bill.dueDay);
-      if (bill.frequency === "yearly" && bill.dueMonth) {
-        currentPeriodDueDate = setMonth(setDate(new Date(today.getFullYear(), 0, 1), bill.dueDay), bill.dueMonth - 1);
-      }
+      const currentPeriodDueDate = getDueDateForMonth(bill, today) ?? currentMonthStart;
 
       // If no payment exists at all, use current period's due date
       if (!latestPayment) {

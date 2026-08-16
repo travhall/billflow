@@ -6,6 +6,7 @@ import {
   type CategoryBudget,
 } from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
+import { getNextCycleDueDate } from "@shared/date-utils";
 
 export interface IStorage {
   getBills(): Promise<Bill[]>;
@@ -99,15 +100,7 @@ export class DatabaseStorage implements IStorage {
     if (!bill) throw new Error("Bill not found");
 
     const currentDueDate = new Date(payment.dueDate);
-    let nextDueDate: Date;
-
-    if (bill.frequency === "monthly") {
-      nextDueDate = new Date(currentDueDate);
-      nextDueDate.setMonth(nextDueDate.getMonth() + 1);
-    } else {
-      nextDueDate = new Date(currentDueDate);
-      nextDueDate.setFullYear(nextDueDate.getFullYear() + 1);
-    }
+    const nextDueDate = getNextCycleDueDate(currentDueDate, bill.frequency);
 
     const [newPayment] = await db.insert(payments).values({
       billId: payment.billId,

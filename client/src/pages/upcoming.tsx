@@ -7,8 +7,6 @@ import { clsx } from "clsx";
 import { motion } from "framer-motion";
 import {
   addMonths,
-  startOfMonth,
-  setDate,
   startOfDay,
   isBefore,
   parseISO,
@@ -17,21 +15,18 @@ import {
   isSameYear,
 } from "date-fns";
 import { type Bill, type Payment } from "@shared/schema";
+import { getDueDateForMonth } from "@shared/date-utils";
 import { formatCurrency } from "@/lib/utils";
 import { CalendarClock, TrendingUp } from "lucide-react";
 
 function getMonthDueDate(bill: Bill, monthDate: Date): Date | null {
-  if (bill.frequency === "monthly") {
-    const day = Math.min(bill.dueDay, new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate());
-    return setDate(startOfMonth(monthDate), day);
+  // Yearly bills only occur in their due month; getDueDateForMonth always
+  // returns a date for yearly bills (ignoring monthDate's month), so gate
+  // it here to preserve per-month iteration semantics used by callers.
+  if (bill.frequency === "yearly" && bill.dueMonth !== monthDate.getMonth() + 1) {
+    return null;
   }
-  if (bill.frequency === "yearly" && bill.dueMonth) {
-    if (bill.dueMonth === monthDate.getMonth() + 1) {
-      const day = Math.min(bill.dueDay, new Date(monthDate.getFullYear(), bill.dueMonth, 0).getDate());
-      return new Date(monthDate.getFullYear(), bill.dueMonth - 1, day);
-    }
-  }
-  return null;
+  return getDueDateForMonth(bill, monthDate);
 }
 
 function getPaymentForMonth(payments: Payment[], billId: number, monthDate: Date): Payment | undefined {
