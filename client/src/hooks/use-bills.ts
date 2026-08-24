@@ -68,6 +68,10 @@ export function useUpdateBill() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.bills.list.path] });
+      // Updating a bill's default amount also updates its pending payment
+      // server-side (see server/storage.ts updateBill), so the payments
+      // cache needs invalidating too, not just bills.
+      queryClient.invalidateQueries({ queryKey: [api.payments.list.path] });
       toast({ title: "Bill Updated", description: "Changes have been saved." });
     },
   });

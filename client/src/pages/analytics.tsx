@@ -24,21 +24,7 @@ import { format, parseISO, subMonths, startOfMonth, endOfMonth, isWithinInterval
 import { TrendingUp, DollarSign, Calendar, Award, Pencil, Plus, X, Check, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { clsx } from "clsx";
-
-const CATEGORY_COLORS: Record<string, string> = {
-  Utilities:     "#6366f1",
-  Rent:          "#8b5cf6",
-  Housing:       "#8b5cf6",
-  Subscription:  "#a78bfa",
-  Subscriptions: "#a78bfa",
-  Insurance:     "#10b981",
-  Debt:          "#f59e0b",
-  Other:         "#64748b",
-};
-
-function getCategoryColor(category: string) {
-  return CATEGORY_COLORS[category] ?? CATEGORY_COLORS.Other;
-}
+import { getCategoryColor } from "@/lib/category-colors";
 
 interface CustomTooltipProps {
   active?: boolean;

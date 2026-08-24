@@ -6,7 +6,7 @@ import {
   type CategoryBudget,
 } from "@shared/schema";
 import { eq, desc, inArray, and, ne } from "drizzle-orm";
-import { getNextCycleDueDate } from "@shared/date-utils";
+import { getNextCycleDueDate, getDueDateForMonth } from "@shared/date-utils";
 
 type Executor = Parameters<Parameters<typeof db.transaction>[0]>[0] | typeof db;
 
@@ -19,6 +19,7 @@ export interface IStorage {
 
   getPayments(): Promise<Payment[]>;
   getPaymentsByBill(billId: number): Promise<Payment[]>;
+  processAutoPay(): Promise<void>;
   createPayment(payment: InsertPayment): Promise<Payment>;
   updatePayment(id: number, updates: UpdatePaymentRequest): Promise<Payment>;
   deletePayment(id: number): Promise<void>;
@@ -49,6 +50,34 @@ export class DatabaseStorage implements IStorage {
   async updateBill(id: number, updates: UpdateBillRequest): Promise<Bill> {
     const [updated] = await db.update(bills).set(updates).where(eq(bills.id, id)).returning();
     if (!updated) throw new Error("Bill not found");
+
+    const amountChanged = updates.defaultAmount !== undefined;
+    const scheduleChanged = updates.dueDay !== undefined || updates.dueMonth !== undefined || updates.frequency !== undefined;
+
+    // A not-yet-paid payment is just a preview generated from the bill's
+    // amount/schedule — nothing has actually happened for that cycle yet,
+    // so it should track corrections. Paid payments are a locked
+    // historical record and are never touched here. When the schedule
+    // changes, each pending payment's own due date is used as the
+    // reference so it stays in the same cycle (month/year) it already
+    // represents, just recomputed with the corrected day/month.
+    if (amountChanged || scheduleChanged) {
+      const pending = await db.select().from(payments)
+        .where(and(eq(payments.billId, id), ne(payments.status, "paid")));
+
+      for (const payment of pending) {
+        const patch: { amount?: string; dueDate?: Date } = {};
+        if (amountChanged) patch.amount = updated.defaultAmount;
+        if (scheduleChanged) {
+          const correctedDueDate = getDueDateForMonth(updated, new Date(payment.dueDate));
+          if (correctedDueDate) patch.dueDate = correctedDueDate;
+        }
+        if (Object.keys(patch).length > 0) {
+          await db.update(payments).set(patch).where(eq(payments.id, payment.id));
+        }
+      }
+    }
+
     return updated;
   }
 
@@ -57,7 +86,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPayments(): Promise<Payment[]> {
-    const allPayments = await db.select().from(payments).orderBy(desc(payments.dueDate));
+    return await db.select().from(payments).orderBy(desc(payments.dueDate));
+  }
+
+  async processAutoPay(): Promise<void> {
+    const allPayments = await db.select().from(payments);
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -66,9 +99,7 @@ export class DatabaseStorage implements IStorage {
       (p) => p.status !== "paid" && new Date(p.dueDate) < today
     );
 
-    if (overduePending.length === 0) {
-      return allPayments;
-    }
+    if (overduePending.length === 0) return;
 
     // Batch-fetch the bills for every overdue payment in one query instead
     // of one query per payment.
@@ -78,9 +109,7 @@ export class DatabaseStorage implements IStorage {
 
     const autoPayPayments = overduePending.filter((p) => billsById.get(p.billId)?.isAutoPay);
 
-    if (autoPayPayments.length === 0) {
-      return allPayments;
-    }
+    if (autoPayPayments.length === 0) return;
 
     await db.transaction(async (tx) => {
       for (const payment of autoPayPayments) {
@@ -92,9 +121,6 @@ export class DatabaseStorage implements IStorage {
         await this.resetPayment(payment.id, tx);
       }
     });
-
-    // Only re-query if something actually changed.
-    return await db.select().from(payments).orderBy(desc(payments.dueDate));
   }
 
   async getPaymentsByBill(billId: number): Promise<Payment[]> {

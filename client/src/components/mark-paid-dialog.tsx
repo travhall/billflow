@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useState, useEffect } from "react";
-import { useCreatePayment } from "@/hooks/use-payments";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { createPaymentRequest, updatePaymentRequest, markPaidAndResetRequest, resetPaymentRequest } from "@/hooks/use-payments";
+import { queryClient } from "@/lib/queryClient";
+import { api } from "@shared/routes";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
@@ -31,7 +32,6 @@ export const useMarkPaidDialog = create<MarkPaidState>((set) => ({
 
 export function MarkPaidDialog() {
   const { isOpen, bill, dueDate, paymentId, closeDialog } = useMarkPaidDialog();
-  const createPayment = useCreatePayment();
   const { toast } = useToast();
 
   const [amount, setAmount] = useState("");
@@ -56,11 +56,11 @@ export function MarkPaidDialog() {
     setIsPending(true);
 
     // Snapshot for rollback on error
-    const previousPayments = queryClient.getQueryData<Payment[]>(["/api/payments"]);
+    const previousPayments = queryClient.getQueryData<Payment[]>([api.payments.list.path]);
 
     // Optimistic update — mark the payment as paid immediately in the cache
     if (paymentId && previousPayments) {
-      queryClient.setQueryData<Payment[]>(["/api/payments"], (old) =>
+      queryClient.setQueryData<Payment[]>([api.payments.list.path], (old) =>
         old?.map((p) =>
           p.id === paymentId
             ? { ...p, status: "paid" as const, paidDate: new Date(paidDate).toISOString() as unknown as Date }
@@ -75,7 +75,7 @@ export function MarkPaidDialog() {
       if (!paymentId) {
         // No existing payment record — create it first (unavoidable second
         // request, since there's no id yet to mark-paid-and-reset against).
-        const res = await apiRequest("POST", "/api/payments", {
+        const created = await createPaymentRequest({
           billId: bill.id,
           amount,
           dueDate,
@@ -83,23 +83,22 @@ export function MarkPaidDialog() {
           status: "paid",
           notes: "",
         });
-        const created = await res.json();
         savedPaymentId = created.id;
 
         if (resetCycle) {
-          await apiRequest("POST", `/api/payments/${savedPaymentId}/reset`);
+          await resetPaymentRequest(savedPaymentId);
         }
       } else {
         // Existing pending payment — mark paid and (optionally) reset in one
         // atomic server-side transaction.
         savedPaymentId = paymentId;
         if (resetCycle) {
-          await apiRequest("POST", `/api/payments/${savedPaymentId}/mark-paid-and-reset`, {
+          await markPaidAndResetRequest(savedPaymentId, {
             amount,
             paidDate: new Date(paidDate),
           });
         } else {
-          await apiRequest("PUT", `/api/payments/${savedPaymentId}`, {
+          await updatePaymentRequest(savedPaymentId, {
             amount,
             paidDate: new Date(paidDate),
             status: "paid",
@@ -108,7 +107,7 @@ export function MarkPaidDialog() {
         }
       }
 
-      queryClient.invalidateQueries({ queryKey: ["/api/payments"] });
+      queryClient.invalidateQueries({ queryKey: [api.payments.list.path] });
       toast({
         title: "Payment Recorded",
         description: resetCycle
@@ -119,7 +118,7 @@ export function MarkPaidDialog() {
     } catch {
       // Rollback optimistic update on failure
       if (previousPayments) {
-        queryClient.setQueryData(["/api/payments"], previousPayments);
+        queryClient.setQueryData([api.payments.list.path], previousPayments);
       }
       toast({ title: "Error", description: "Failed to record payment", variant: "destructive" });
     } finally {

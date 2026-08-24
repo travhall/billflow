@@ -28,6 +28,7 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   await seedData();
+  await storage.processAutoPay();
 
   // Bills
   app.get(api.bills.list.path, async (req, res) => {

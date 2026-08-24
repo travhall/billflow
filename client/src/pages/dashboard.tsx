@@ -29,9 +29,7 @@ import {
 import { Trash2, Edit2, RotateCcw, Undo2, AlertTriangle, X, CreditCard, FlaskConical, Bell, ChevronDown, Search } from "lucide-react";
 import { sendTestNotification, getNotificationPermission, requestNotificationPermission } from "@/lib/notifications";
 import { useDeleteBill } from "@/hooks/use-bills";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
+import { useResetPayment, useRevertPayment } from "@/hooks/use-payments";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { formatCurrency } from "@/lib/utils";
 
@@ -44,12 +42,215 @@ type SortConfig = {
   direction: 'asc' | 'desc';
 } | null;
 
+type BillStatusItem = {
+  bill: Bill;
+  status: "paid" | "pending" | "overdue";
+  dueDate: Date;
+  amount: string;
+  paymentId: number | undefined;
+};
+
+function SortIcon({ column, sortConfig }: { column: string; sortConfig: SortConfig }) {
+  if (sortConfig?.key !== column) return <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />;
+  return sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />;
+}
+
+interface BillTableProps {
+  items: BillStatusItem[];
+  title: string;
+  sortConfig: SortConfig;
+  onSort: (key: string) => void;
+  onShowHistory: (bill: Bill) => void;
+  onDeleteBill: (id: number) => void;
+  onMarkPaid: (bill: Bill, dueDate: Date, paymentId?: number) => void;
+  onResetCycle: (paymentId: number) => void;
+  onRevertPayment: (paymentId: number) => void;
+  resetPending: boolean;
+  revertPending: boolean;
+}
+
+// Hoisted to module scope (not defined inside Dashboard) so it keeps a
+// stable component identity across Dashboard re-renders — otherwise React
+// treats it as a brand-new component type on every render (e.g. every
+// search keystroke) and remounts the whole table subtree instead of
+// diffing it.
+function BillTable({
+  items,
+  title,
+  sortConfig,
+  onSort,
+  onShowHistory,
+  onDeleteBill,
+  onMarkPaid,
+  onResetCycle,
+  onRevertPayment,
+  resetPending,
+  revertPending,
+}: BillTableProps) {
+  return (
+    <div className="bg-card text-card-foreground rounded-2xl border border-border shadow-sm overflow-hidden mb-8 transition-colors">
+      <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-muted/30">
+        <h2 className="text-lg font-display font-bold">{title}</h2>
+      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="pl-6 cursor-pointer hover:bg-muted/50 transition-colors group" onClick={() => onSort('name')}>
+              <div className="flex items-center">
+                Bill Name <SortIcon column="name" sortConfig={sortConfig} />
+              </div>
+            </TableHead>
+            <TableHead className="cursor-pointer hover:bg-muted/50 transition-colors group" onClick={() => onSort('category')}>
+              <div className="flex items-center">
+                Category <SortIcon column="category" sortConfig={sortConfig} />
+              </div>
+            </TableHead>
+            <TableHead className="cursor-pointer hover:bg-muted/50 transition-colors group" onClick={() => onSort('date')}>
+              <div className="flex items-center">
+                Due Date <SortIcon column="date" sortConfig={sortConfig} />
+              </div>
+            </TableHead>
+            <TableHead className="cursor-pointer hover:bg-muted/50 transition-colors group" onClick={() => onSort('amount')}>
+              <div className="flex items-center">
+                Amount <SortIcon column="amount" sortConfig={sortConfig} />
+              </div>
+            </TableHead>
+            <TableHead className="cursor-pointer hover:bg-muted/50 transition-colors group" onClick={() => onSort('status')}>
+              <div className="flex items-center">
+                Status <SortIcon column="status" sortConfig={sortConfig} />
+              </div>
+            </TableHead>
+            <TableHead className="text-right pr-6 min-w-[140px]">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {items.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                No bills found
+              </TableCell>
+            </TableRow>
+          ) : (
+            items.map((item) => (
+              <TableRow key={item.bill.id} className="group hover:bg-muted/20 transition-colors border-border/50">
+                <TableCell className="pl-6 font-medium text-foreground">
+                  <button
+                    onClick={() => onShowHistory(item.bill)}
+                    className="flex items-center gap-2 hover:text-primary transition-colors text-left group/name"
+                  >
+                    <span className="group-hover/name:underline underline-offset-2">{item.bill.name}</span>
+                    {item.bill.isAutoPay && (
+                      <Badge variant="outline" className="h-5 text-[10px] bg-primary/5 text-primary border-primary/20">
+                        Auto
+                      </Badge>
+                    )}
+                  </button>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline" className="font-normal text-muted-foreground bg-background border-border">
+                    {item.bill.category}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {format(item.dueDate, item.bill.frequency === "yearly" ? "MMM d, yyyy" : "MMM d")}
+                </TableCell>
+                <TableCell className="font-display font-bold text-foreground">
+                  {formatCurrency(Number(item.amount))}
+                </TableCell>
+                <TableCell>
+                  <Badge
+                    className={clsx(
+                      "capitalize font-semibold",
+                      item.status === "paid" ? "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-emerald-500/20" :
+                      item.status === "overdue" ? "bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 border-rose-500/20" :
+                      "bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border-amber-500/20"
+                    )}
+                    variant="outline"
+                  >
+                    {item.status}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right pr-6">
+                  <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive no-default-hover-elevate">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent className="bg-card border-border">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Bill</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete "{item.bill.name}"? This will also remove its payment history.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel className="bg-background border-border">Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={() => onDeleteBill(item.bill.id)}
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+
+                    <EditBillDialog bill={item.bill} />
+
+                    {item.status === "paid" && item.paymentId && (
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onRevertPayment(item.paymentId!)}
+                          disabled={revertPending}
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground no-default-hover-elevate"
+                          title="Revert to Pending"
+                        >
+                          <Undo2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onResetCycle(item.paymentId!)}
+                          disabled={resetPending}
+                          className="h-8 border-primary/20 hover:bg-primary/5 text-primary gap-2"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                          Next Cycle
+                        </Button>
+                      </div>
+                    )}
+
+                    {item.status !== "paid" && (
+                      <Button
+                        size="sm"
+                        onClick={() => onMarkPaid(item.bill, item.dueDate, item.paymentId)}
+                        className="bg-primary text-primary-foreground hover-elevate shadow-sm h-8 rounded-lg text-xs font-semibold px-3"
+                      >
+                        Mark Paid
+                      </Button>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const { data: bills, isLoading: billsLoading } = useBills();
   const { data: payments, isLoading: paymentsLoading } = usePayments();
   const { openDialog } = useMarkPaidDialog();
   const deleteBill = useDeleteBill();
-  const { toast } = useToast();
+  const resetMutation = useResetPayment();
+  const revertMutation = useRevertPayment();
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
   const [historyBill, setHistoryBill] = useState<Bill | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
@@ -65,32 +266,6 @@ export default function Dashboard() {
   useKeyboardShortcuts({
     onOpenAddBill: openAddBill,
     onFocusSearch: () => searchRef.current?.focus(),
-  });
-
-  const resetMutation = useMutation({
-    mutationFn: async (paymentId: number) => {
-      await apiRequest("POST", `/api/payments/${paymentId}/reset`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/payments"] });
-      toast({
-        title: "Success",
-        description: "Billing cycle reset for the next period.",
-      });
-    },
-  });
-
-  const revertMutation = useMutation({
-    mutationFn: async (paymentId: number) => {
-      await apiRequest("POST", `/api/payments/${paymentId}/revert`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/payments"] });
-      toast({
-        title: "Reverted",
-        description: "Payment has been marked as pending again.",
-      });
-    },
   });
 
   const handleSort = (key: string) => {
@@ -123,14 +298,14 @@ export default function Dashboard() {
         });
 
       const latestPayment = billPayments[0];
-      
+
       // If latest payment exists and is paid, we show it as paid regardless of due date
       if (latestPayment && latestPayment.status === "paid") {
-        return { 
-          status: "paid" as const, 
-          dueDate: parseISO(latestPayment.dueDate as unknown as string), 
-          amount: latestPayment.amount, 
-          paymentId: latestPayment.id 
+        return {
+          status: "paid" as const,
+          dueDate: parseISO(latestPayment.dueDate as unknown as string),
+          amount: latestPayment.amount,
+          paymentId: latestPayment.id
         };
       }
 
@@ -146,11 +321,11 @@ export default function Dashboard() {
       // If it's pending/overdue
       const latestDueDate = parseISO(latestPayment.dueDate as unknown as string);
       const status = isBefore(latestDueDate, today) ? "overdue" : "pending";
-      return { 
-        status, 
-        dueDate: latestDueDate, 
-        amount: latestPayment.amount, 
-        paymentId: latestPayment.id 
+      return {
+        status,
+        dueDate: latestDueDate,
+        amount: latestPayment.amount,
+        paymentId: latestPayment.id
       };
     };
 
@@ -193,12 +368,12 @@ export default function Dashboard() {
       });
     };
 
-    const monthlyBillStatuses = allBillStatuses.filter(item => 
-      item.bill.frequency === "monthly" || 
+    const monthlyBillStatuses = allBillStatuses.filter(item =>
+      item.bill.frequency === "monthly" ||
       (item.bill.frequency === "yearly" && item.bill.dueMonth === (today.getMonth() + 1))
     );
 
-    const annualBillStatuses = allBillStatuses.filter(item => 
+    const annualBillStatuses = allBillStatuses.filter(item =>
       item.bill.frequency === "yearly"
     );
 
@@ -223,8 +398,8 @@ export default function Dashboard() {
     const overdueBills = allBillStatuses.filter(item => item.status === "overdue");
 
     return {
-      monthlyBillStatuses: sortData(monthlyBillStatuses),
-      annualBillStatuses: sortData(annualBillStatuses),
+      monthlyBillStatuses: sortData(monthlyBillStatuses) as BillStatusItem[],
+      annualBillStatuses: sortData(annualBillStatuses) as BillStatusItem[],
       totalDue,
       totalPaid,
       totalPending,
@@ -270,170 +445,9 @@ export default function Dashboard() {
   const filteredAnnual = applyFilters(processedData.annualBillStatuses);
   const hasActiveFilters = searchQuery || statusFilter !== "all" || categoryFilter !== "all";
 
-  const SortIcon = ({ column }: { column: string }) => {
-    if (sortConfig?.key !== column) return <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />;
-    return sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />;
-  };
-
-  const BillTable = ({ items, title }: { items: any[], title: string }) => (
-    <div className="bg-card text-card-foreground rounded-2xl border border-border shadow-sm overflow-hidden mb-8 transition-colors">
-      <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-muted/30">
-        <h2 className="text-lg font-display font-bold">{title}</h2>
-      </div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="pl-6 cursor-pointer hover:bg-muted/50 transition-colors group" onClick={() => handleSort('name')}>
-              <div className="flex items-center">
-                Bill Name <SortIcon column="name" />
-              </div>
-            </TableHead>
-            <TableHead className="cursor-pointer hover:bg-muted/50 transition-colors group" onClick={() => handleSort('category')}>
-              <div className="flex items-center">
-                Category <SortIcon column="category" />
-              </div>
-            </TableHead>
-            <TableHead className="cursor-pointer hover:bg-muted/50 transition-colors group" onClick={() => handleSort('date')}>
-              <div className="flex items-center">
-                Due Date <SortIcon column="date" />
-              </div>
-            </TableHead>
-            <TableHead className="cursor-pointer hover:bg-muted/50 transition-colors group" onClick={() => handleSort('amount')}>
-              <div className="flex items-center">
-                Amount <SortIcon column="amount" />
-              </div>
-            </TableHead>
-            <TableHead className="cursor-pointer hover:bg-muted/50 transition-colors group" onClick={() => handleSort('status')}>
-              <div className="flex items-center">
-                Status <SortIcon column="status" />
-              </div>
-            </TableHead>
-            <TableHead className="text-right pr-6 min-w-[140px]">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {items.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                No bills found
-              </TableCell>
-            </TableRow>
-          ) : (
-            items.map((item) => (
-              <TableRow key={item.bill.id} className="group hover:bg-muted/20 transition-colors border-border/50">
-                <TableCell className="pl-6 font-medium text-foreground">
-                  <button
-                    onClick={() => setHistoryBill(item.bill)}
-                    className="flex items-center gap-2 hover:text-primary transition-colors text-left group/name"
-                  >
-                    <span className="group-hover/name:underline underline-offset-2">{item.bill.name}</span>
-                    {item.bill.isAutoPay && (
-                      <Badge variant="outline" className="h-5 text-[10px] bg-primary/5 text-primary border-primary/20">
-                        Auto
-                      </Badge>
-                    )}
-                  </button>
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline" className="font-normal text-muted-foreground bg-background border-border">
-                    {item.bill.category}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {format(item.dueDate, item.bill.frequency === "yearly" ? "MMM d, yyyy" : "MMM d")}
-                </TableCell>
-                <TableCell className="font-display font-bold text-foreground">
-                  {formatCurrency(Number(item.amount))}
-                </TableCell>
-                <TableCell>
-                  <Badge 
-                    className={clsx(
-                      "capitalize font-semibold",
-                      item.status === "paid" ? "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-emerald-500/20" :
-                      item.status === "overdue" ? "bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 border-rose-500/20" :
-                      "bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border-amber-500/20"
-                    )}
-                    variant="outline"
-                  >
-                    {item.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right pr-6">
-                  <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive no-default-hover-elevate">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent className="bg-card border-border">
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Bill</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to delete "{item.bill.name}"? This will also remove its payment history.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel className="bg-background border-border">Cancel</AlertDialogCancel>
-                          <AlertDialogAction 
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            onClick={() => deleteBill.mutate(item.bill.id)}
-                          >
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-
-                    <EditBillDialog bill={item.bill} />
-
-                    {item.status === "paid" && item.paymentId && (
-                      <div className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => revertMutation.mutate(item.paymentId!)}
-                          disabled={revertMutation.isPending}
-                          className="h-8 w-8 text-muted-foreground hover:text-foreground no-default-hover-elevate"
-                          title="Revert to Pending"
-                        >
-                          <Undo2 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => resetMutation.mutate(item.paymentId!)}
-                          disabled={resetMutation.isPending}
-                          className="h-8 border-primary/20 hover:bg-primary/5 text-primary gap-2"
-                        >
-                          <RotateCcw className="h-3.5 w-3.5" />
-                          Next Cycle
-                        </Button>
-                      </div>
-                    )}
-
-                    {item.status !== "paid" && (
-                      <Button 
-                        size="sm"
-                        onClick={() => openDialog(item.bill, item.dueDate, item.paymentId)}
-                        className="bg-primary text-primary-foreground hover-elevate shadow-sm h-8 rounded-lg text-xs font-semibold px-3"
-                      >
-                        Mark Paid
-                      </Button>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-    </div>
-  );
-
   return (
     <Layout>
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="space-y-8"
@@ -502,7 +516,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        <StatsCards 
+        <StatsCards
           totalDue={processedData.totalDue}
           totalPaid={processedData.totalPaid}
           totalPending={processedData.totalPending}
@@ -596,8 +610,32 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="space-y-8">
-            <BillTable items={filteredMonthly} title="Upcoming Monthly Bills" />
-            <BillTable items={filteredAnnual} title="Annual Bills Overview" />
+            <BillTable
+              items={filteredMonthly}
+              title="Upcoming Monthly Bills"
+              sortConfig={sortConfig}
+              onSort={handleSort}
+              onShowHistory={setHistoryBill}
+              onDeleteBill={(id) => deleteBill.mutate(id)}
+              onMarkPaid={openDialog}
+              onResetCycle={(id) => resetMutation.mutate(id)}
+              onRevertPayment={(id) => revertMutation.mutate(id)}
+              resetPending={resetMutation.isPending}
+              revertPending={revertMutation.isPending}
+            />
+            <BillTable
+              items={filteredAnnual}
+              title="Annual Bills Overview"
+              sortConfig={sortConfig}
+              onSort={handleSort}
+              onShowHistory={setHistoryBill}
+              onDeleteBill={(id) => deleteBill.mutate(id)}
+              onMarkPaid={openDialog}
+              onResetCycle={(id) => resetMutation.mutate(id)}
+              onRevertPayment={(id) => revertMutation.mutate(id)}
+              resetPending={resetMutation.isPending}
+              revertPending={revertMutation.isPending}
+            />
           </div>
         )}
       </motion.div>
