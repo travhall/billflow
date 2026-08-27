@@ -53,6 +53,18 @@ authentication by design — runs locally on the owner's machine.
 Nightly `pg_dump` of the Neon database to Cloudflare R2 via
 `script/backup-db.sh`, run by a macOS LaunchAgent (not part of this repo).
 
+## Deployment
+
+Optionally deployed to [Render](https://render.com) (`render.yaml` at
+repo root, free tier) for access away from the local machine. Render
+runs the same `pnpm build`/`pnpm start` as local production mode — no
+code differences between local and deployed. Protected by HTTP Basic
+Auth (`BASIC_AUTH_USER`/`BASIC_AUTH_PASS` env vars, unset locally by
+default) since the deployed instance has a public URL and this app has
+no other authentication. Free-tier services sleep after 15 minutes idle;
+the first request after a sleep period takes 30-60s to wake — expected
+behavior, not a bug.
+
 ## Conventions
 
 - Money amounts are stored as Postgres `numeric` (returned as strings by

@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { timingSafeEqual } from "crypto";
 
 process.on("uncaughtException", (err) => {
   console.error("Uncaught exception:", err);
@@ -29,6 +30,39 @@ app.use(
 );
 
 app.use(express.urlencoded({ extended: false }));
+
+function timingSafeStringEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return timingSafeEqual(bufA, bufB);
+}
+
+function basicAuth(req: Request, res: Response, next: NextFunction) {
+  const user = process.env.BASIC_AUTH_USER;
+  const pass = process.env.BASIC_AUTH_PASS;
+  if (!user || !pass) return next(); // not configured — auth disabled (local dev default)
+
+  const header = req.headers.authorization;
+  if (header?.startsWith("Basic ")) {
+    const decoded = Buffer.from(header.slice(6), "base64").toString("utf-8");
+    const separatorIndex = decoded.indexOf(":");
+    const reqUser = decoded.slice(0, separatorIndex);
+    const reqPass = decoded.slice(separatorIndex + 1);
+    if (
+      separatorIndex !== -1 &&
+      timingSafeStringEqual(reqUser, user) &&
+      timingSafeStringEqual(reqPass, pass)
+    ) {
+      return next();
+    }
+  }
+
+  res.set("WWW-Authenticate", 'Basic realm="BillFlow"');
+  res.status(401).send("Authentication required");
+}
+
+app.use(basicAuth);
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
