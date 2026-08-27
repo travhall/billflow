@@ -95,30 +95,61 @@ function BillTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="pl-6 cursor-pointer hover:bg-muted/50 transition-colors group" onClick={() => onSort('name')}>
-              <div className="flex items-center">
+            <TableHead
+              className="pl-6"
+              aria-sort={sortConfig?.key === 'name' ? (sortConfig.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
+            >
+              <button
+                type="button"
+                onClick={() => onSort('name')}
+                className="flex items-center hover:text-foreground transition-colors group w-full"
+              >
                 Bill Name <SortIcon column="name" sortConfig={sortConfig} />
-              </div>
+              </button>
             </TableHead>
-            <TableHead className="cursor-pointer hover:bg-muted/50 transition-colors group" onClick={() => onSort('category')}>
-              <div className="flex items-center">
+            <TableHead
+              aria-sort={sortConfig?.key === 'category' ? (sortConfig.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
+            >
+              <button
+                type="button"
+                onClick={() => onSort('category')}
+                className="flex items-center hover:text-foreground transition-colors group w-full"
+              >
                 Category <SortIcon column="category" sortConfig={sortConfig} />
-              </div>
+              </button>
             </TableHead>
-            <TableHead className="cursor-pointer hover:bg-muted/50 transition-colors group" onClick={() => onSort('date')}>
-              <div className="flex items-center">
+            <TableHead
+              aria-sort={sortConfig?.key === 'date' ? (sortConfig.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
+            >
+              <button
+                type="button"
+                onClick={() => onSort('date')}
+                className="flex items-center hover:text-foreground transition-colors group w-full"
+              >
                 Due Date <SortIcon column="date" sortConfig={sortConfig} />
-              </div>
+              </button>
             </TableHead>
-            <TableHead className="cursor-pointer hover:bg-muted/50 transition-colors group" onClick={() => onSort('amount')}>
-              <div className="flex items-center">
+            <TableHead
+              aria-sort={sortConfig?.key === 'amount' ? (sortConfig.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
+            >
+              <button
+                type="button"
+                onClick={() => onSort('amount')}
+                className="flex items-center hover:text-foreground transition-colors group w-full"
+              >
                 Amount <SortIcon column="amount" sortConfig={sortConfig} />
-              </div>
+              </button>
             </TableHead>
-            <TableHead className="cursor-pointer hover:bg-muted/50 transition-colors group" onClick={() => onSort('status')}>
-              <div className="flex items-center">
+            <TableHead
+              aria-sort={sortConfig?.key === 'status' ? (sortConfig.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
+            >
+              <button
+                type="button"
+                onClick={() => onSort('status')}
+                className="flex items-center hover:text-foreground transition-colors group w-full"
+              >
                 Status <SortIcon column="status" sortConfig={sortConfig} />
-              </div>
+              </button>
             </TableHead>
             <TableHead className="text-right pr-6 min-w-[140px]">Actions</TableHead>
           </TableRow>

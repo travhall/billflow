@@ -128,6 +128,14 @@ highest-leverage, lowest-residual-risk fixes:
     fixing something broken. Confirm the owner actually wants each before
     an executor spends the effort.
 
+## Second pass — 2026-08-27
+
+New findings surfaced after the first-pass batch (001-030) had landed.
+
+| Plan | Title | Priority | Effort | Risk | Depends on | Status |
+|------|-------|----------|--------|------|------------|--------|
+| 031  | Make bill-table column sort headers keyboard-accessible | P1 | S | LOW | — | DONE (all 5 sortable `TableHead` elements in `client/src/pages/dashboard.tsx`'s shared `BillTable` now wrap their label + `SortIcon` in a `<button type="button" onClick={...}>` instead of an `onClick` on the `<th>` itself, plus each gained a matching `aria-sort` (`"ascending"`/`"descending"`/`"none"`) driven by the existing `sortConfig` state; `Actions` header left untouched (not sortable, out of scope); drift check (`git diff --stat 03e99d2..HEAD -- client/src/pages/dashboard.tsx`) was clean, code matched the plan's excerpt exactly; `pnpm check` exits 0, no errors, matching the plan's clean baseline; `grep -c '<button'` and `grep -c 'aria-sort='` confirm +5 buttons and 5 `aria-sort` attributes; live `pnpm dev` verification confirmed: Tab from the search box reaches "Bill Name" with a visible focus ring, mouse-click sorting still cycles none→ascending→descending→none correctly with `aria-sort` toggling in lockstep on both the "Upcoming Monthly Bills" and "Annual Bills Overview" table instances, and the header row layout is visually unchanged (no wrapping/shift); the literal Enter/Space keyboard-activation sub-check (Step 2.3) could not be directly automation-verified — this session's browser tool dispatches Enter/Space keydown events with empty `key`/`code`/`keyCode` (confirmed via an injected event-listener probe), while the same tool's Escape and Tab dispatches carry correct key identity and work correctly (Escape closed a Radix dialog, Tab moved focus as expected) on this very page, isolating it as a gap in this specific tool's key-name mapping rather than an app defect; corroborating evidence for correct behavior: the header is a plain native `<button>` (browser-guaranteed Enter/Space activation, no custom key handling involved), and a repo-wide grep of `onKeyDown`/`keydown` handlers found none on this element or any ancestor that intercepts or prevents Enter/Space; no files outside `client/src/pages/dashboard.tsx` modified for the fix itself; committed on branch `advisor/031-keyboard-accessible-sort-headers`) |
+
 ## Findings considered and rejected
 
 Every finding from the original audit now has a plan except one
