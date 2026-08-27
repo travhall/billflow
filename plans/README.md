@@ -207,7 +207,7 @@ high-confidence finding, selected by the owner.
 
 | Plan | Title | Priority | Effort | Risk | Depends on | Status |
 |------|-------|----------|--------|------|------------|--------|
-| 035  | Restore per-request auto-pay rollover | P1 | S | LOW | — | TODO |
+| 035  | Restore per-request auto-pay rollover | P1 | S | LOW | — | DONE (`GET /api/payments` in `server/routes.ts` now calls `await storage.processAutoPay()` before `storage.getPayments()`, restoring the per-request cadence; boot-time call and `processAutoPay`/`getPayments` internals untouched per scope; drift check against `e1609da` showed no changes to either file; `pnpm check` shows the same pre-existing `analytics.tsx` `Set<string>` iteration error on baseline, none new; live-DB verification against a running `pnpm dev` (alternate port, since the owner's own dev server already held the default port) confirmed the core regression fix: manually set an auto-pay bill's pending payment (`USI: Internet`, id 46) `due_date` to yesterday, then without restarting the server hit `GET /api/payments` and confirmed payment 46 flipped to `paid` and a new next-cycle payment (id 51, due 2026-09-25) appeared; committed on branch `advisor/035-restore-per-request-autopay-rollover`) |
 
 `pnpm audit --prod` clean, no known vulnerabilities. Everything else
 checked in this pass (the `updateBill` pending-payment cascade, the

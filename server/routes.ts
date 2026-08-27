@@ -75,6 +75,7 @@ export async function registerRoutes(
 
   // Payments
   app.get(api.payments.list.path, async (req, res) => {
+    await storage.processAutoPay();
     const payments = await storage.getPayments();
     res.json(payments);
   });
