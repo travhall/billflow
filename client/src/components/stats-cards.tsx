@@ -14,7 +14,7 @@ export function StatsCards({ totalDue, totalPaid, totalPending, overdueCount }: 
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <Card className="md:col-span-2 overflow-hidden bg-slate-950 text-white border-0 shadow-2xl relative group">
+      <Card className="md:col-span-2 overflow-hidden bg-slate-950 text-white border-0 dark:border dark:border-border shadow-2xl relative group">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-transparent opacity-50" />
         <CardContent className="p-8 relative">
           <div className="flex justify-between items-start mb-8">
