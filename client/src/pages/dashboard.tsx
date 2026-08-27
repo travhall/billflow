@@ -174,7 +174,7 @@ function BillTable({
                   <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive no-default-hover-elevate">
+                        <Button variant="ghost" size="icon" aria-label="Delete bill" className="h-8 w-8 text-muted-foreground hover:text-destructive no-default-hover-elevate">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </AlertDialogTrigger>

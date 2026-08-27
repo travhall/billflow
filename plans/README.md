@@ -143,3 +143,9 @@ deliberately excluded item:
 
 Re-run `/improve` against this repo in the future to catch anything new
 that's landed since this pass.
+
+## Second pass — 2026-08-27
+
+| Plan | Title | Priority | Effort | Risk | Depends on | Status |
+|------|-------|----------|--------|------|------------|--------|
+| 033  | Add accessible names to icon-only buttons | P2 | S | LOW | none | DONE (added `aria-label="Delete bill"` to the delete-bill icon button in `dashboard.tsx:177`, and a dynamic `aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}` to the theme-toggle button in `theme-toggle.tsx`; drift check against commit `03e99d2` found no changes to either file, both "Current state" excerpts matched live code exactly; `pnpm check` exits 0, no new errors; both `grep` Done-criteria checks find exactly 1 match each; manual accessibility-tree check in a live `pnpm dev` session confirmed the delete button's computed Name is "Delete bill" and the theme-toggle's flips correctly between "Switch to dark mode" and "Switch to light mode" on click; `git status` confirms no files outside the two in-scope files were modified) |
