@@ -10,6 +10,14 @@ Execute in the order below unless dependencies say otherwise. Each
 executor: read the plan fully before starting, honor its STOP conditions,
 and update your row when done.
 
+**Status as of 2026-08-27**: every plan across both passes is DONE except
+**023** (BLOCKED — `typescript-eslint` doesn't yet support this repo's
+`typescript@7.0.2`; see its row below for the full detail). 023's worktree
+(`.claude/worktrees/magical-diffie-112c15`, branch
+`advisor/023-add-eslint-prettier`) is intentionally left in place, holding
+its uncommitted config — the only worktree kept around besides the primary
+checkout. Revisit once a TS-7-compatible `typescript-eslint` ships.
+
 ## Execution order & status
 
 | Plan | Title | Priority | Effort | Risk | Depends on | Status |
