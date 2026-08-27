@@ -639,79 +639,81 @@ export default function Dashboard() {
           </div>
         )}
       </motion.div>
-      {/* Floating test panel */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
-        {demoOpen && (
-          <div className="bg-card border border-border rounded-2xl shadow-2xl p-4 w-72 space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-              <FlaskConical className="w-3.5 h-3.5" /> Feature Demo
-            </p>
+      {/* Floating test panel — dev only, stripped from production builds by Vite's import.meta.env.DEV dead-code elimination */}
+      {import.meta.env.DEV && (
+        <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
+          {demoOpen && (
+            <div className="bg-card border border-border rounded-2xl shadow-2xl p-4 w-72 space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <FlaskConical className="w-3.5 h-3.5" /> Feature Demo
+              </p>
 
-            <div className="space-y-1.5">
-              <p className="text-xs font-medium text-foreground">Overdue Banner</p>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="flex-1 h-8 text-xs border-rose-300 text-rose-600 hover:bg-rose-50"
-                  onClick={() => { setDemoOverdue(true); setBannerDismissed(false); }}
-                >
-                  Show Banner
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="flex-1 h-8 text-xs"
-                  onClick={() => { setDemoOverdue(false); setBannerDismissed(false); }}
-                >
-                  Hide
-                </Button>
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-foreground">Overdue Banner</p>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 h-8 text-xs border-rose-300 text-rose-600 hover:bg-rose-50"
+                    onClick={() => { setDemoOverdue(true); setBannerDismissed(false); }}
+                  >
+                    Show Banner
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 h-8 text-xs"
+                    onClick={() => { setDemoOverdue(false); setBannerDismissed(false); }}
+                  >
+                    Hide
+                  </Button>
+                </div>
+              </div>
+
+              <div className="border-t border-border pt-3 space-y-1.5">
+                <p className="text-xs font-medium text-foreground">Browser Notifications</p>
+                {notifPermission !== "granted" ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full h-8 text-xs gap-1.5"
+                    onClick={async () => {
+                      const r = await requestNotificationPermission();
+                      setNotifPermission(r);
+                    }}
+                  >
+                    <Bell className="w-3 h-3" /> Enable Notifications
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full h-8 text-xs gap-1.5 border-primary/40 text-primary hover:bg-primary/5"
+                    onClick={() => sendTestNotification()}
+                  >
+                    <Bell className="w-3 h-3" /> Send Test Notification
+                  </Button>
+                )}
+                <p className="text-[10px] text-muted-foreground">
+                  {notifPermission === "granted"
+                    ? "Notifications enabled. Click above to fire a test."
+                    : notifPermission === "denied"
+                    ? "Blocked in browser settings — allow and reload."
+                    : "Permission not yet requested."}
+                </p>
               </div>
             </div>
-
-            <div className="border-t border-border pt-3 space-y-1.5">
-              <p className="text-xs font-medium text-foreground">Browser Notifications</p>
-              {notifPermission !== "granted" ? (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="w-full h-8 text-xs gap-1.5"
-                  onClick={async () => {
-                    const r = await requestNotificationPermission();
-                    setNotifPermission(r);
-                  }}
-                >
-                  <Bell className="w-3 h-3" /> Enable Notifications
-                </Button>
-              ) : (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="w-full h-8 text-xs gap-1.5 border-primary/40 text-primary hover:bg-primary/5"
-                  onClick={() => sendTestNotification()}
-                >
-                  <Bell className="w-3 h-3" /> Send Test Notification
-                </Button>
-              )}
-              <p className="text-[10px] text-muted-foreground">
-                {notifPermission === "granted"
-                  ? "Notifications enabled. Click above to fire a test."
-                  : notifPermission === "denied"
-                  ? "Blocked in browser settings — allow and reload."
-                  : "Permission not yet requested."}
-              </p>
-            </div>
-          </div>
-        )}
-        <button
-          onClick={() => setDemoOpen((o) => !o)}
-          className="w-12 h-12 rounded-2xl bg-foreground text-background shadow-xl flex items-center justify-center hover:opacity-80 transition-all hover:scale-105 active:scale-95"
-          title="Test Features"
-          data-testid="button-demo-toggle"
-        >
-          <FlaskConical className="w-5 h-5" />
-        </button>
-      </div>
+          )}
+          <button
+            onClick={() => setDemoOpen((o) => !o)}
+            className="w-12 h-12 rounded-2xl bg-foreground text-background shadow-xl flex items-center justify-center hover:opacity-80 transition-all hover:scale-105 active:scale-95"
+            title="Test Features"
+            data-testid="button-demo-toggle"
+          >
+            <FlaskConical className="w-5 h-5" />
+          </button>
+        </div>
+      )}
 
       <MarkPaidDialog />
       <BillHistorySheet
