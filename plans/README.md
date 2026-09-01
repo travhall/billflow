@@ -252,7 +252,7 @@ change — no new `status` value, filter, or schema change needed.
 
 | Plan | Title | Priority | Effort | Risk | Depends on | Status |
 |------|-------|----------|--------|------|------------|--------|
-| 037  | Tier the "Pending" status badge by due-date proximity | P2 | S | LOW | — | TODO |
+| 037  | Tier the "Pending" status badge by due-date proximity | P2 | S | LOW | — | DONE (added `getUrgencyDisplay` helper hoisted to module scope in `client/src/pages/dashboard.tsx`, deriving badge label/color from `differenceInCalendarDays(item.dueDate, today)` for `"pending"` items — 0-3 days shows amber "Due Today"/"Due in Nd", 4-14 days shows new blue "Upcoming", 15+ days shows the muted `text-muted-foreground` "Scheduled" tier reused from the category badge; `paid`/`overdue` keep identical colors/logic, only their label capitalization moved from CSS `capitalize` into the string; `pnpm check` and `pnpm test` (3/3) both exit 0 — worktree's `node_modules` needed a full `pnpm install` first, unrelated to this change; `BillStatusItem`/`getStatus`/`statusFilter` untouched, confirmed via grep; verified against a live `pnpm dev` + real Neon DB: a temporary "Plan037 Test Bill" due in 2 days showed amber "Due in 2d", the existing "USI: Internet" bill due Sep 14 showed blue "Upcoming", all far-out annual bills (e.g. "Mint Mobile: Travis" due Jun 2027) showed muted "Scheduled", the Pending/Overdue filter pills and the "on track"/overdue count were unaffected by the new tiers, and the test bill was archived afterward to leave the DB clean; committed `f3e85c3` on branch `advisor/037-tier-pending-badge-by-due-date`) |
 
 Re-run `/improve` against this repo in the future to catch anything new
 that's landed since this pass.
