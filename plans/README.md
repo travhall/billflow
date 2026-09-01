@@ -216,3 +216,22 @@ correctly — not re-flagged.
 
 Re-run `/improve` against this repo in the future to catch anything new
 that's landed since this pass.
+
+## Fourth pass — 2026-09-01
+
+Single targeted plan (`plan <description>` mode, no full audit) from a
+direct owner request: archiving a paid-off recurring bill (a student loan
+final payment) needed to preserve its payment history for the app's
+metrics, not just avoid a scary confirm dialog. Investigation found the
+underlying mechanism (`bills.archived`) already existed and "Delete" was
+already a soft archive — but `GET /api/bills` filtering archived bills out
+server-side broke the History/Analytics bill-name lookup for exactly the
+payments the owner wanted preserved, and archiving right after a final
+payment left a dangling next-cycle pending payment forever.
+
+| Plan | Title | Priority | Effort | Risk | Depends on | Status |
+|------|-------|----------|--------|------|------------|--------|
+| 036  | Fix archived-bill history lookup, clean up dangling payments, relabel Delete as Archive | P1 | M | MED | — | TODO |
+
+Re-run `/improve` against this repo in the future to catch anything new
+that's landed since this pass.
