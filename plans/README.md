@@ -252,7 +252,29 @@ change — no new `status` value, filter, or schema change needed.
 
 | Plan | Title | Priority | Effort | Risk | Depends on | Status |
 |------|-------|----------|--------|------|------------|--------|
-| 037  | Tier the "Pending" status badge by due-date proximity | P2 | S | LOW | — | DONE (added `getUrgencyDisplay` helper hoisted to module scope in `client/src/pages/dashboard.tsx`, deriving badge label/color from `differenceInCalendarDays(item.dueDate, today)` for `"pending"` items — 0-3 days shows amber "Due Today"/"Due in Nd", 4-14 days shows new blue "Upcoming", 15+ days shows the muted `text-muted-foreground` "Scheduled" tier reused from the category badge; `paid`/`overdue` keep identical colors/logic, only their label capitalization moved from CSS `capitalize` into the string; `pnpm check` and `pnpm test` (3/3) both exit 0 — worktree's `node_modules` needed a full `pnpm install` first, unrelated to this change; `BillStatusItem`/`getStatus`/`statusFilter` untouched, confirmed via grep; verified against a live `pnpm dev` + real Neon DB: a temporary "Plan037 Test Bill" due in 2 days showed amber "Due in 2d", the existing "USI: Internet" bill due Sep 14 showed blue "Upcoming", all far-out annual bills (e.g. "Mint Mobile: Travis" due Jun 2027) showed muted "Scheduled", the Pending/Overdue filter pills and the "on track"/overdue count were unaffected by the new tiers, and the test bill was archived afterward to leave the DB clean; committed `f3e85c3` on branch `advisor/037-tier-pending-badge-by-due-date`) |
+| 037  | Tier the "Pending" status badge by due-date proximity | P2 | S | LOW | — | DONE (added `getUrgencyDisplay` helper hoisted to module scope in `client/src/pages/dashboard.tsx`, deriving badge label/color from `differenceInCalendarDays(item.dueDate, today)` for `"pending"` items — 0-3 days shows amber "Due Today"/"Due in Nd", 4-14 days shows new blue "Upcoming", 15+ days shows the muted `text-muted-foreground` "Scheduled" tier reused from the category badge; `paid`/`overdue` keep identical colors/logic, only their label capitalization moved from CSS `capitalize` into the string; `pnpm check` and `pnpm test` (3/3) both exit 0 — worktree's `node_modules` needed a full `pnpm install` first, unrelated to this change; `BillStatusItem`/`getStatus`/`statusFilter` untouched, confirmed via grep; verified against a live `pnpm dev` + real Neon DB: a temporary "Plan037 Test Bill" due in 2 days showed amber "Due in 2d", the existing "USI: Internet" bill due Sep 14 showed blue "Upcoming", all far-out annual bills (e.g. "Mint Mobile: Travis" due Jun 2027) showed muted "Scheduled", the Pending/Overdue filter pills and the "on track"/overdue count were unaffected by the new tiers, and the test bill was archived afterward to leave the DB clean; committed `f3e85c3` on branch `advisor/037-tier-pending-badge-by-due-date`, merged to `main` fast-forward as `696beec`, worktree/branch cleaned up. Superseded same-day by plan 038 — the owner tried it live and found the unbounded 15+-day "Scheduled" tier recreated the original flatness problem one threshold later, just further out.) |
+
+Re-run `/improve` against this repo in the future to catch anything new
+that's landed since this pass.
+
+## Sixth pass — 2026-09-01
+
+Single targeted plan (`plan <description>` mode, no full audit), same day
+as the fifth pass. After 037 shipped, the owner found the day-count
+tiering was the wrong axis entirely — annotated a live screenshot showing
+bills 30-47 days out (monthly table) and bills 2-9 months out (annual
+table) all still flattened under one "Scheduled" label. A design-critique
+detour (via the `design:design-critique` skill) initially misdiagnosed
+this as a visual-weight problem before the owner clarified the actual
+model: what matters is whether a bill's next unpaid occurrence falls in
+the *current* billing cycle (this calendar month for monthly bills, this
+calendar year for yearly bills) or a future one — not how many days away
+it is. Plan 038 replaces 037's day-count tiers with that cycle-membership
+check.
+
+| Plan | Title | Priority | Effort | Risk | Depends on | Status |
+|------|-------|----------|--------|------|------------|--------|
+| 038  | Replace day-count status tiers with billing-cycle membership | P1 | S | LOW | — | TODO |
 
 Re-run `/improve` against this repo in the future to catch anything new
 that's landed since this pass.
