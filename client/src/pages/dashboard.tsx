@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { clsx } from "clsx";
 import { type Bill } from "@shared/schema";
-import { startOfMonth, endOfMonth, isSameMonth, isSameYear, parseISO, isBefore, startOfDay, format, differenceInCalendarDays } from "date-fns";
+import { startOfMonth, endOfMonth, isSameMonth, isSameYear, parseISO, isBefore, startOfDay, format } from "date-fns";
 import { getDueDateForMonth } from "@shared/date-utils";
 import { sumAmounts } from "@/lib/money";
 import { useMemo, useEffect } from "react";
@@ -62,17 +62,14 @@ function getUrgencyDisplay(item: BillStatusItem): { label: string; className: st
   if (item.status === "overdue") {
     return { label: "Overdue", className: "bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 border-rose-500/20" };
   }
-  const daysUntil = differenceInCalendarDays(item.dueDate, startOfDay(new Date()));
-  if (daysUntil <= 3) {
-    return {
-      label: daysUntil <= 0 ? "Due Today" : `Due in ${daysUntil}d`,
-      className: "bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border-amber-500/20",
-    };
+  const today = new Date();
+  const isCurrentCycle = item.bill.frequency === "monthly"
+    ? isSameMonth(item.dueDate, today) && isSameYear(item.dueDate, today)
+    : isSameYear(item.dueDate, today);
+  if (isCurrentCycle) {
+    return { label: "Due", className: "bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border-amber-500/20" };
   }
-  if (daysUntil <= 14) {
-    return { label: "Upcoming", className: "bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 border-blue-500/20" };
-  }
-  return { label: "Scheduled", className: "text-muted-foreground bg-background border-border" };
+  return { label: "Next Cycle", className: "text-muted-foreground bg-background border-border" };
 }
 
 interface BillTableProps {
