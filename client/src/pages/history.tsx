@@ -128,7 +128,14 @@ export default function History() {
                   return (
                     <TableRow key={payment.id} className="hover:bg-muted/30 transition-colors border-border/50">
                       <TableCell className="font-medium text-foreground">
-                        {bill?.name || "Unknown Bill"}
+                        <span className="flex items-center gap-2">
+                          {bill?.name || "Unknown Bill"}
+                          {bill?.archived && (
+                            <Badge variant="outline" className="font-normal text-xs text-muted-foreground">
+                              Archived
+                            </Badge>
+                          )}
+                        </span>
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="font-normal text-muted-foreground">
