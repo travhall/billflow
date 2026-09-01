@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { clsx } from "clsx";
 import { type Bill } from "@shared/schema";
-import { startOfMonth, endOfMonth, isSameMonth, isSameYear, parseISO, isBefore, startOfDay, format } from "date-fns";
+import { startOfMonth, endOfMonth, isSameMonth, isSameYear, parseISO, isBefore, startOfDay, format, differenceInCalendarDays } from "date-fns";
 import { getDueDateForMonth } from "@shared/date-utils";
 import { sumAmounts } from "@/lib/money";
 import { useMemo, useEffect } from "react";
@@ -53,6 +53,26 @@ type BillStatusItem = {
 function SortIcon({ column, sortConfig }: { column: string; sortConfig: SortConfig }) {
   if (sortConfig?.key !== column) return <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />;
   return sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />;
+}
+
+function getUrgencyDisplay(item: BillStatusItem): { label: string; className: string } {
+  if (item.status === "paid") {
+    return { label: "Paid", className: "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-emerald-500/20" };
+  }
+  if (item.status === "overdue") {
+    return { label: "Overdue", className: "bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 border-rose-500/20" };
+  }
+  const daysUntil = differenceInCalendarDays(item.dueDate, startOfDay(new Date()));
+  if (daysUntil <= 3) {
+    return {
+      label: daysUntil <= 0 ? "Due Today" : `Due in ${daysUntil}d`,
+      className: "bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border-amber-500/20",
+    };
+  }
+  if (daysUntil <= 14) {
+    return { label: "Upcoming", className: "bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 border-blue-500/20" };
+  }
+  return { label: "Scheduled", className: "text-muted-foreground bg-background border-border" };
 }
 
 interface BillTableProps {
@@ -190,15 +210,10 @@ function BillTable({
                 </TableCell>
                 <TableCell>
                   <Badge
-                    className={clsx(
-                      "capitalize font-semibold",
-                      item.status === "paid" ? "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-emerald-500/20" :
-                      item.status === "overdue" ? "bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 border-rose-500/20" :
-                      "bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border-amber-500/20"
-                    )}
+                    className={clsx("font-semibold", getUrgencyDisplay(item).className)}
                     variant="outline"
                   >
-                    {item.status}
+                    {getUrgencyDisplay(item).label}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right pr-6">
