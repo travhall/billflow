@@ -233,5 +233,26 @@ payment left a dangling next-cycle pending payment forever.
 |------|-------|----------|--------|------|------------|--------|
 | 036  | Fix archived-bill history lookup, clean up dangling payments, relabel Delete as Archive | P1 | M | MED | — | DONE (`getBills()` in `server/storage.ts` no longer filters `archived`, so History/Analytics can resolve bill name/category for payments whose bill has since been archived; `deleteBill()` now wraps the archive in a transaction that also deletes that bill's not-yet-paid payments, closing the dangling-pending-payment gap; `dashboard.tsx`'s category dropdown and "no bills yet" empty state gained explicit `!b.archived` filters to keep their prior behavior now that the server returns archived bills too; the "Delete Bill" dialog is relabeled "Archive Bill" with copy describing the real effect (icon swapped `Trash2` → `Archive`), `onDeleteBill`/`useDeleteBill`/the DELETE route kept their names per scope; `history.tsx` now shows an "Archived" badge next to a payment's bill name when that bill is archived; drift check against `850ab7a` showed no changes to any in-scope file; `pnpm check` and `pnpm test` (3/3) both exit clean — the worktree's `node_modules` was missing most packages (only `typescript` present) and needed `pnpm install` before either would run correctly, unrelated to this plan's edits; live-DB verification against a running `pnpm dev` (this worktree's own `.env`/port 5050 config, copied from the main checkout) confirmed all Step 6 observations: created a test bill, marked it paid (confirming `resetPayment` created a next-cycle pending payment), archived it via the new dialog (copy read exactly as written, no more "remove its payment history"), confirmed the bill disappeared from the Dashboard active table and Upcoming, confirmed the dangling next-cycle pending payment was deleted while the paid payment survived, confirmed History showed the real bill name/category with an "Archived" badge, confirmed the category dropdown no longer offered the test bill's now-orphaned category, and cleaned up the test bill's row and payments directly from the dev DB afterward; committed as 3 commits on branch `advisor/036-archive-bill-history-and-copy`) |
 
+Merged to `main` (fast-forward, `dd6f3d3`) and its worktree/branch cleaned
+up same day, per owner confirmation.
+
+Re-run `/improve` against this repo in the future to catch anything new
+that's landed since this pass.
+
+## Fifth pass — 2026-09-01
+
+Single targeted plan (`plan <description>` mode, no full audit), same day
+as the fourth pass — a follow-up UX observation from the owner after using
+the app post-036: the Dashboard's bill tables render every not-yet-due bill
+with the identical flat amber "Pending" badge regardless of how far out
+it's due (an annual bill due 9+ months out reads exactly as urgent as one
+due tomorrow). Investigation confirmed a single shared `BillTable`
+component drives both bill tables, so the fix is a one-file, display-only
+change — no new `status` value, filter, or schema change needed.
+
+| Plan | Title | Priority | Effort | Risk | Depends on | Status |
+|------|-------|----------|--------|------|------------|--------|
+| 037  | Tier the "Pending" status badge by due-date proximity | P2 | S | LOW | — | TODO |
+
 Re-run `/improve` against this repo in the future to catch anything new
 that's landed since this pass.
