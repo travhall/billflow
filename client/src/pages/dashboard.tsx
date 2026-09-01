@@ -26,7 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Trash2, Edit2, RotateCcw, Undo2, AlertTriangle, X, CreditCard, FlaskConical, Bell, ChevronDown, Search } from "lucide-react";
+import { Archive, Edit2, RotateCcw, Undo2, AlertTriangle, X, CreditCard, FlaskConical, Bell, ChevronDown, Search } from "lucide-react";
 import { sendTestNotification, getNotificationPermission, requestNotificationPermission } from "@/lib/notifications";
 import { useDeleteBill } from "@/hooks/use-bills";
 import { useResetPayment, useRevertPayment } from "@/hooks/use-payments";
@@ -205,15 +205,15 @@ function BillTable({
                   <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" aria-label="Delete bill" className="h-8 w-8 text-muted-foreground hover:text-destructive no-default-hover-elevate">
-                          <Trash2 className="h-4 w-4" />
+                        <Button variant="ghost" size="icon" aria-label="Archive bill" className="h-8 w-8 text-muted-foreground hover:text-destructive no-default-hover-elevate">
+                          <Archive className="h-4 w-4" />
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent className="bg-card border-border">
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Bill</AlertDialogTitle>
+                          <AlertDialogTitle>Archive Bill</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Are you sure you want to delete "{item.bill.name}"? This will also remove its payment history.
+                            Archive "{item.bill.name}"? It'll be hidden from your dashboard and stop generating new payments, but its payment history stays intact and stays visible in History.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -222,7 +222,7 @@ function BillTable({
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             onClick={() => onDeleteBill(item.bill.id)}
                           >
-                            Delete
+                            Archive
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
@@ -460,7 +460,7 @@ export default function Dashboard() {
   if (!processedData) return null;
 
   // Derive unique categories from all bills for the filter
-  const allCategories = Array.from(new Set((bills ?? []).map(b => b.category))).sort();
+  const allCategories = Array.from(new Set((bills ?? []).filter(b => !b.archived).map(b => b.category))).sort();
 
   const applyFilters = (items: typeof processedData.monthlyBillStatuses) =>
     items.filter(item => {
@@ -623,7 +623,7 @@ export default function Dashboard() {
         )}
 
         {/* Empty state when no bills exist at all */}
-        {bills?.length === 0 ? (
+        {bills?.filter(b => !b.archived).length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center mb-6">
               <CreditCard className="w-10 h-10 text-primary" />
