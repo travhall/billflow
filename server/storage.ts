@@ -34,7 +34,7 @@ export interface IStorage {
 
 export class DatabaseStorage implements IStorage {
   async getBills(): Promise<Bill[]> {
-    return await db.select().from(bills).where(eq(bills.archived, false));
+    return await db.select().from(bills);
   }
 
   async getBill(id: number): Promise<Bill | undefined> {
@@ -82,7 +82,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteBill(id: number): Promise<void> {
-    await db.update(bills).set({ archived: true }).where(eq(bills.id, id));
+    await db.transaction(async (tx) => {
+      await tx.update(bills).set({ archived: true }).where(eq(bills.id, id));
+      await tx.delete(payments).where(and(eq(payments.billId, id), ne(payments.status, "paid")));
+    });
   }
 
   async getPayments(): Promise<Payment[]> {
