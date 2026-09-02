@@ -297,5 +297,35 @@ badge tiers) without touching the underlying filter value/type/logic.
 |------|-------|----------|--------|------|------------|--------|
 | 039  | Rename the "Pending" status filter pill to "Unpaid" | P2 | S | LOW | — | DONE (changed `client/src/pages/dashboard.tsx:603`'s pill label expression to render "Unpaid" for `s === "pending"`, falling through to the existing capitalization for `"paid"`/`"overdue"`; `statusFilter`'s type, `setStatusFilter`, `matchesStatus`, and the `data-testid` attribute all untouched, confirmed via grep; drift check against `c324014` was clean; `pnpm check` exits 0 (one pre-existing unrelated `analytics.tsx` `Set<string>` iteration error surfaced before `pnpm install` — same stale-`node_modules` class of issue as plans 036-038, gone after install); `pnpm test` 3/3 pass; only `dashboard.tsx` modified per `git status`; live-DB verification against a running `pnpm dev` + real Neon DB: pill row read "All"/"Unpaid"/"Paid"/"Overdue" in order; clicking "Unpaid" showed "12 results" and mixed both "Due" and "Next Cycle" row badges (e.g. `USI: Internet` "Due", `RCU: Mortgage` "Next Cycle") under the one "Unpaid" filter, exactly the drift the plan described; "Clear filters" appeared, confirming `hasActiveFilters` still activates on the renamed pill; "Paid" and "Overdue" pills kept their existing labels and filtering (0 results each — no paid/overdue bills exist in the current dataset, unrelated to this change); committed `969c2f2` on branch `advisor/039-rename-pending-filter-pill-to-unpaid`, not pushed) |
 
+Merged to `main` (fast-forward, `4695659`) and its worktree/branch cleaned
+up same day.
+
+Re-run `/improve` against this repo in the future to catch anything new
+that's landed since this pass.
+
+## Eighth pass — 2026-09-02
+
+Single targeted plan (`plan <description>` mode, no full audit), same day
+as the seventh pass. The owner noticed the "Total Monthly Budget" card
+read "0% Paid — $0.00 of $3,035.28" while most of the monthly bill table
+showed bills already handled for the cycle. Investigation against the live
+dev DB confirmed real paid payments (e.g. `RCU: Mortgage`'s September
+payment, paid 2026-08-24) were being reported as unpaid by
+`dashboard.tsx`'s `getStatus`, because it picks the payment with the
+*latest* due date as authoritative — and auto-pay rollover always creates
+a newer, still-unpaid next-cycle row the moment a bill is paid, so a fully
+current bill can never report "paid" again. This bug predates plans
+037-039 (which only changed display labels derived from this same broken
+`status` field); 038's "Next Cycle" wording happened to look plausible by
+coincidence, while the stats card's 0% honestly exposed the same
+underlying bug. Plan 040 rewrites the payment-selection algorithm and, given
+the direct dollar-total stakes, extracts it into a pure function with
+unit tests (this repo's existing Vitest pattern) rather than an
+unverified inline closure.
+
+| Plan | Title | Priority | Effort | Risk | Depends on | Status |
+|------|-------|----------|--------|------|------------|--------|
+| 040  | Fix `getStatus`'s payment-selection bug hiding paid bills as unpaid | P1 | M | MED | — | TODO |
+
 Re-run `/improve` against this repo in the future to catch anything new
 that's landed since this pass.
