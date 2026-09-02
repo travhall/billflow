@@ -384,7 +384,12 @@ export default function Dashboard() {
     const overdueCount = monthlyBillStatuses.filter(item => item.status === "overdue").length;
 
     // Default sorts then apply user sort
-    monthlyBillStatuses.sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
+    const statusPriority: Record<BillStatusItem["status"], number> = { overdue: 0, pending: 1, paid: 2 };
+    monthlyBillStatuses.sort((a, b) => {
+      const priorityDiff = statusPriority[a.status] - statusPriority[b.status];
+      if (priorityDiff !== 0) return priorityDiff;
+      return a.dueDate.getTime() - b.dueDate.getTime();
+    });
     annualBillStatuses.sort((a, b) => {
       const aMonth = a.bill.dueMonth || 0;
       const bMonth = b.bill.dueMonth || 0;
