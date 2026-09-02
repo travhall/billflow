@@ -350,7 +350,7 @@ status derivation and the stats-card totals.
 
 | Plan | Title | Priority | Effort | Risk | Depends on | Status |
 |------|-------|----------|--------|------|------------|--------|
-| 041  | Sort the monthly bill table actionable-first, paid last | P2 | S | LOW | 040 | TODO |
+| 041  | Sort the monthly bill table actionable-first, paid last | P2 | S | LOW | 040 | DONE (`dashboard.tsx`'s `monthlyBillStatuses.sort` now groups overdue → pending → paid via a `statusPriority` map, date-ascending within each group; `annualBillStatuses.sort` left byte-for-byte untouched; `pnpm check` and `pnpm test` (8/8) exit 0; live `pnpm dev` verification confirmed default order flips as expected — `USI: Internet` (Due, Sep 14) now sorts above `RCU: Mortgage` (Paid, Sep 1) — while clicking "Due Date" still gives literal chronological order (asc/desc toggle both confirmed) and totals/pill counts are unchanged; committed on branch `advisor/041-sort-monthly-table-actionable-first`) |
 
 Re-run `/improve` against this repo in the future to catch anything new
 that's landed since this pass.
