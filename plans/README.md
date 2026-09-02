@@ -327,5 +327,30 @@ unverified inline closure.
 |------|-------|----------|--------|------|------------|--------|
 | 040  | Fix `getStatus`'s payment-selection bug hiding paid bills as unpaid | P1 | M | MED | — | DONE (extracted the algorithm into pure `getBillCycleStatus(bill, payments, today)` in new `client/src/lib/bill-status.ts`, which checks explicitly for a paid payment covering the *current* cycle — via `isSameMonth`/`isSameYear` for monthly, `isSameYear` for yearly — before falling back to the oldest outstanding unpaid row, replacing the old "latest due date wins" closure that always preferred a rolled-over next-cycle pending row over an already-paid current-cycle one; added `client/src/lib/bill-status.test.ts` covering the exact RCU: Mortgage bug, a yearly-bill variant, plain pending, stale-overdue-with-no-rollover-yet, and no-payment-rows-at-all — one fixture's `dueDate` literal (`2026-09-01T00:00:00.000Z`, midnight UTC) initially failed in this machine's `America/Chicago` timezone because it's the previous day locally; fixed by aligning it to the same UTC-offset pattern (`T05:00:00.000Z`) the plan's own first test case already used, without touching the assertion — 8/8 pass (3 pre-existing + 5 new); `dashboard.tsx` now imports and calls `getBillCycleStatus`, old inline `getStatus` closure and its now-dead `currentMonthStart` local removed; `pnpm check` exits 0 (worktree needed `pnpm install` first — `node_modules` was nearly empty, same class of issue as prior passes' stale-install note, not a real type error); all Done-criteria greps pass (`getStatus` → 0 matches, `getBillCycleStatus` → 2 matches, only the plan's 3 named files touched per `git status`); live-DB verification against a running `pnpm dev` (on a scratch port, `.env` copied in from the main checkout since worktrees don't carry one) + the real Neon DB: `RCU: Mortgage` and `CenterPoint: Gas` now show green "Paid" instead of "Next Cycle"; the Total Monthly Budget card now reads "94% Paid — $2,844.58 of $3,035.28" instead of "0% Paid — $0.00"; `USI: Internet`/`Integrity: Vehicle Insurance` (genuinely still unpaid, due later in September) correctly still show "Due"; `/api/payments` confirmed no payment rows were created/modified/deleted by the change; clicking the "Paid" filter pill now correctly includes `RCU: Mortgage` and `CenterPoint: Gas` (6 results) where it previously excluded them; committed `1b7703b` on branch `advisor/040-fix-bill-status-latest-payment-selection`, not pushed) |
 
+Merged to `main` (fast-forward, `7779a91`) and its worktree/branch cleaned
+up same day.
+
+Re-run `/improve` against this repo in the future to catch anything new
+that's landed since this pass.
+
+## Ninth pass — 2026-09-02
+
+Single targeted plan (`plan <description>` mode, no full audit), same day
+as the eighth pass. Discussed with the owner before drafting (per their
+explicit request): now that plan 040 correctly reports paid bills as
+`"paid"`, the monthly table's default row order — a flat ascending sort
+on `dueDate` with no regard for status — puts already-paid bills (whose
+due date is their already-passed current-cycle date) ahead of still-unpaid
+ones due later in the month. The owner confirmed the fix scope: monthly
+table only (the annual table's "Next Cycle" state is normal for most of
+the year, not an edge case, so chronological browsing stays more useful
+there), paid bills sink to the bottom. Plan 041 changes only the default
+sort comparator — a pure row-ordering change, independent of plan 040's
+status derivation and the stats-card totals.
+
+| Plan | Title | Priority | Effort | Risk | Depends on | Status |
+|------|-------|----------|--------|------|------------|--------|
+| 041  | Sort the monthly bill table actionable-first, paid last | P2 | S | LOW | 040 | TODO |
+
 Re-run `/improve` against this repo in the future to catch anything new
 that's landed since this pass.
