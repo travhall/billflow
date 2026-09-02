@@ -600,7 +600,7 @@ export default function Dashboard() {
                     : "bg-card text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
                 }`}
               >
-                {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
+                {s === "all" ? "All" : s === "pending" ? "Unpaid" : s.charAt(0).toUpperCase() + s.slice(1)}
               </button>
             ))}
           </div>
