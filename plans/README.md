@@ -276,5 +276,26 @@ check.
 |------|-------|----------|--------|------|------------|--------|
 | 038  | Replace day-count status tiers with billing-cycle membership | P1 | S | LOW | — | DONE (rewrote `getUrgencyDisplay` in `client/src/pages/dashboard.tsx` to key the `"pending"` case on billing-cycle membership instead of `differenceInCalendarDays` — monthly bills check `isSameMonth`+`isSameYear` against today, yearly bills check `isSameYear`; unpaid-and-due-this-cycle shows amber "Due" (037's reused near-term amber), unpaid-and-due-a-future-cycle shows muted "Next Cycle" (037's reused far-tier muted style); `paid`/`overdue` branches and the now-unused `differenceInCalendarDays` import left untouched/pruned per plan, byte-for-byte identical colors to 037; drift check against `696beec` was clean; `pnpm check` exits 0 (one pre-existing unrelated `analytics.tsx` `Set<string>` iteration error surfaced before `pnpm install`, gone after — worktree's `node_modules` was stale, same class of issue as plans 036/037); `pnpm test` 3/3 pass; all Done-criteria greps pass (`differenceInCalendarDays`/`"Due Today"`/`"Scheduled"` → 0 matches, `"Next Cycle"` → 1 match, `statusFilter` line unchanged, only `dashboard.tsx` modified); live-DB verification against a running `pnpm dev` + real Neon DB using the owner's existing bills (no test data created, per plan): `USI: Internet`/`Integrity: Vehicle Insurance` (due later this September) showed amber "Due"; `RCU: Mortgage` (due Oct 1) and the rest of the monthly table (Oct 8/11/17) showed muted "Next Cycle"; `Integrity: Home Insurance`/`Claude`/`Qobuz`/`Figma` (due later in 2026) showed "Due"; `Mint Mobile: Travis`/`Mint Mobile: Erin` (due Jun 2027) showed "Next Cycle"; inspected the live DOM className directly and confirmed both badges' Tailwind classes match the plan's spec exactly; the Pending filter pill showed all 12 unpaid bills mixing both tiers together (filter logic unaffected), the Overdue filter pill correctly showed 0 results (no overdue bills exist right now); paid/overdue badge colors could not be live-verified — the dev DB currently has 0 paid and 0 overdue bills (0% Paid) — but that branch is byte-for-byte unchanged from 037's already-verified code, confirmed via diff; committed `1efeb7d` on branch `advisor/038-cycle-based-due-status`, not pushed) |
 
+Merged to `main` (fast-forward, `c324014`) and its worktree/branch cleaned
+up same day.
+
+Re-run `/improve` against this repo in the future to catch anything new
+that's landed since this pass.
+
+## Seventh pass — 2026-09-02
+
+Single targeted plan (`plan <description>` mode, no full audit). After 038
+shipped, the owner spotted the status filter pill row still labeled
+"Pending" (screenshot attached) — its text is generated directly from the
+underlying `"pending"` filter value, never updated when 038 changed the
+badge vocabulary to "Due"/"Next Cycle". "Pending" no longer appears
+anywhere else in the UI as a bill status. Plan 039 renames the pill's
+display text to "Unpaid" (an accurate description of the union of both
+badge tiers) without touching the underlying filter value/type/logic.
+
+| Plan | Title | Priority | Effort | Risk | Depends on | Status |
+|------|-------|----------|--------|------|------------|--------|
+| 039  | Rename the "Pending" status filter pill to "Unpaid" | P2 | S | LOW | — | TODO |
+
 Re-run `/improve` against this repo in the future to catch anything new
 that's landed since this pass.
