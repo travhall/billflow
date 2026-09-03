@@ -240,7 +240,14 @@ function BillTable({
                       </AlertDialogContent>
                     </AlertDialog>
 
-                    <EditBillDialog bill={item.bill} />
+                    <EditBillDialog
+                      bill={item.bill}
+                      currentPaidPayment={
+                        item.status === "paid" && item.paymentId != null
+                          ? { id: item.paymentId, amount: item.amount, dueDate: item.dueDate }
+                          : null
+                      }
+                    />
 
                     {item.status === "paid" && item.paymentId && (
                       <div className="flex gap-2">

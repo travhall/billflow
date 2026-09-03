@@ -5,17 +5,31 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Bell } from "lucide-react";
+import { format } from "date-fns";
 import { requestNotificationPermission, type NotificationPermission } from "@/lib/notifications";
 import { useToast } from "@/hooks/use-toast";
+import { formatCurrency } from "@/lib/utils";
 
 interface BillFormFieldsProps {
   form: UseFormReturn<any>;
   notifPermission: NotificationPermission;
   onNotifPermissionChange: (p: NotificationPermission) => void;
+  currentPaidPayment?: { id: number; amount: string; dueDate: Date } | null;
+  correctPaidPayment?: boolean;
+  onCorrectPaidPaymentChange?: (checked: boolean) => void;
 }
 
-export function BillFormFields({ form, notifPermission, onNotifPermissionChange }: BillFormFieldsProps) {
+export function BillFormFields({
+  form,
+  notifPermission,
+  onNotifPermissionChange,
+  currentPaidPayment,
+  correctPaidPayment,
+  onCorrectPaidPaymentChange,
+}: BillFormFieldsProps) {
   const frequency = form.watch("frequency");
+  const isVariable = form.watch("isVariable");
+  const watchedAmount = form.watch("defaultAmount");
   const { toast } = useToast();
 
   async function enableReminders() {
@@ -55,6 +69,24 @@ export function BillFormFields({ form, notifPermission, onNotifPermissionChange 
           </FormItem>
         )} />
       </div>
+
+      {currentPaidPayment && !isVariable && Number(watchedAmount) !== Number(currentPaidPayment.amount) && (
+        <div className="flex items-start gap-3 rounded-xl border border-border p-4 bg-muted/30">
+          <Checkbox
+            checked={correctPaidPayment ?? false}
+            onCheckedChange={(checked) => onCorrectPaidPaymentChange?.(checked === true)}
+          />
+          <div className="space-y-0.5">
+            <div className="text-sm font-medium text-foreground">
+              Also correct the amount already paid this cycle
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {formatCurrency(Number(currentPaidPayment.amount))} → {formatCurrency(Number(watchedAmount) || 0)}
+              {" "}({format(currentPaidPayment.dueDate, "MMM d, yyyy")})
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         <FormField control={form.control} name="frequency" render={({ field }) => (
