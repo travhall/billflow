@@ -379,5 +379,34 @@ already-unguarded endpoint, no server changes needed.
 |------|-------|----------|--------|------|------------|--------|
 | 042  | Let editing a bill also correct its already-paid current-cycle amount | P2 | M | MED | 040 | DONE (drift check clean, single `<EditBillDialog>` call site confirmed, `PUT /api/payments/:id`/`storage.updatePayment` confirmed still unguarded — no STOP conditions triggered; `dashboard.tsx`'s `<EditBillDialog>` now passes `currentPaidPayment` derived from `item.status`/`item.paymentId`/`item.amount`/`item.dueDate`; `edit-bill-dialog.tsx` rewritten to accept it, track a `correctPaidPayment` checkbox state, and — on submit, only after `updateBill.mutateAsync` succeeds — call `updatePaymentRequest(currentPaidPayment.id, { amount: data.defaultAmount })` and invalidate the payments query; `bill-form-fields.tsx` gained the checkbox itself, gated on `currentPaidPayment && !isVariable && amount !== paid amount`; `create-bill-dialog.tsx` confirmed byte-for-byte untouched (`git status` shows only the 3 in-scope files); `pnpm check` exits 0 (the intermediate per-step prop-type errors the plan predicted appeared exactly as described, resolved by the next step; one unrelated pre-existing `analytics.tsx` TS2802 error confirmed via stash-and-recheck, not touched); `pnpm test` 8/8 pass; live-DB verification against a running `pnpm dev` (worktree needed `pnpm install` — `node_modules` nearly empty — and its own `.env` copied from the main checkout onto a scratch port, `.claude/launch.json` updated to match, both git-ignored) + the real Neon DB, against `Mint Mobile: Erin` (bill 25, payment 37): checkbox correctly hidden when amount unchanged ($360→$360), reappeared reading exactly `$360.00 → $388.99 (Jun 25, 2026)` once changed; saving unchecked left payment 37 at $360/`paid` untouched while the bill's default amount updated; saving checked corrected payment 37 to $388.99 in place (same `id`, still `status: "paid"`, confirmed via `/api/payments`) and the dashboard row updated to match; checkbox confirmed absent for a variable bill (`CenterPoint: Gas`) even with amount changed, absent throughout Create Bill, and absent for an unpaid/"Due" bill (`USI: Internet`) even with amount changed — all 8 manual observations from the Test Plan hold; committed `fbf2b2f` on branch `advisor/042-correct-paid-payment-in-edit-bill`, not pushed) |
 
+Merged to `main` (fast-forward, `51d990b`) and its worktree/branch cleaned
+up same day.
+
+Re-run `/improve` against this repo in the future to catch anything new
+that's landed since this pass.
+
+## Eleventh pass — 2026-09-03
+
+Single targeted plan (`plan <description>` mode, no full audit). The owner
+reported the dev-only Feature Demo panel's "Send Test Notification" button
+appeared to do nothing, and worried it might not work in prod either.
+Live investigation (Claude Browser pane, `Notification.permission`
+inspection, process/port checks) confirmed the notification-sending code
+is not dev/prod-gated at all — only the demo panel widget itself is
+(`import.meta.env.DEV`); the real reminder/budget-overage notifications
+run unconditionally via `App.tsx`'s `NotificationRunner` in every build.
+The most likely root cause is an OS/browser-level notification-delivery
+setting outside the app's control (`Notification.permission === "granted"`
+at the site level doesn't guarantee the OS actually displays one) — not
+fixable in this codebase. A real, smaller bug surfaced alongside it
+though: every test notification reuses the literal tag `"billflow-test"`,
+so a second click silently replaces the first instead of showing a fresh
+alert — confusing during exactly the kind of repeated-click debugging
+this situation invites. Plan 043 fixes that one line.
+
+| Plan | Title | Priority | Effort | Risk | Depends on | Status |
+|------|-------|----------|--------|------|------------|--------|
+| 043  | Give each test notification a unique tag | P3 | S | LOW | — | TODO |
+
 Re-run `/improve` against this repo in the future to catch anything new
 that's landed since this pass.
