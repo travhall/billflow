@@ -352,5 +352,32 @@ status derivation and the stats-card totals.
 |------|-------|----------|--------|------|------------|--------|
 | 041  | Sort the monthly bill table actionable-first, paid last | P2 | S | LOW | 040 | DONE (`dashboard.tsx`'s `monthlyBillStatuses.sort` now groups overdue → pending → paid via a `statusPriority` map, date-ascending within each group; `annualBillStatuses.sort` left byte-for-byte untouched; `pnpm check` and `pnpm test` (8/8) exit 0; live `pnpm dev` verification confirmed default order flips as expected — `USI: Internet` (Due, Sep 14) now sorts above `RCU: Mortgage` (Paid, Sep 1) — while clicking "Due Date" still gives literal chronological order (asc/desc toggle both confirmed) and totals/pill counts are unchanged; committed on branch `advisor/041-sort-monthly-table-actionable-first`) |
 
+Merged to `main` (fast-forward, `2a8dde5`) and its worktree/branch cleaned
+up same day.
+
+Re-run `/improve` against this repo in the future to catch anything new
+that's landed since this pass.
+
+## Tenth pass — 2026-09-03
+
+Single targeted plan (`plan <description>` mode, no full audit), discussed
+at length with the owner before drafting (per their explicit request).
+The owner tried to correct a placeholder default amount (`Mint Mobile:
+Erin`, $360 → the real $388.99) and found the change didn't reflect in
+the table — by design, `updateBill`'s cascade never touches already-paid
+payments, to protect variable bills whose real charge is meant to differ
+from the template. That protection doesn't fit a fixed-rate bill's
+data-entry correction. Investigation found the backend already supports
+direct payment correction (`PUT /api/payments/:id` has no paid-status
+guard) with zero UI path to it anywhere in the app. Plan 042 adds a
+narrowly-scoped, opt-in checkbox to the existing Edit Bill dialog —
+appears only for non-variable bills with a paid current-cycle payment
+whose amount differs from the in-progress edit — reusing the
+already-unguarded endpoint, no server changes needed.
+
+| Plan | Title | Priority | Effort | Risk | Depends on | Status |
+|------|-------|----------|--------|------|------------|--------|
+| 042  | Let editing a bill also correct its already-paid current-cycle amount | P2 | M | MED | 040 | TODO |
+
 Re-run `/improve` against this repo in the future to catch anything new
 that's landed since this pass.
