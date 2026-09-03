@@ -406,7 +406,7 @@ this situation invites. Plan 043 fixes that one line.
 
 | Plan | Title | Priority | Effort | Risk | Depends on | Status |
 |------|-------|----------|--------|------|------------|--------|
-| 043  | Give each test notification a unique tag | P3 | S | LOW | — | TODO |
+| 043  | Give each test notification a unique tag | P3 | S | LOW | — | DONE (`sendTestNotification`'s tag changed from literal `"billflow-test"` to `` `billflow-test-${Date.now()}` `` in `client/src/lib/notifications.ts`; `sendNotification` and its 3 real callers untouched; `pnpm check` shows only the pre-existing unrelated `analytics.tsx` TS2802 error, confirmed present before this change too; `pnpm test` couldn't run — `vitest` not installed in this worktree's `node_modules`, an environment issue unrelated to the change; live browser verification skipped — no browser available in this session with notification permission already granted for localhost) |
 
 Re-run `/improve` against this repo in the future to catch anything new
 that's landed since this pass.
