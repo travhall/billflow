@@ -56,7 +56,7 @@ export function sendTestNotification() {
   }
   new Notification("🔔 BillFlow Test", {
     body: "Notifications are working! You'll be reminded before bills are due.",
-    tag: "billflow-test",
+    tag: `billflow-test-${Date.now()}`,
     icon: "/favicon.ico",
   });
 }
