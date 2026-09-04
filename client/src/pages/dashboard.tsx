@@ -251,9 +251,9 @@ function BillTable({
                           variant="ghost"
                           size="icon"
                           onClick={() => onRevertPayment(item.paymentId!)}
-                          disabled={revertPending}
+                          disabled={revertPending || item.bill.isAutoPay}
                           className="h-8 w-8 text-muted-foreground hover:text-foreground no-default-hover-elevate"
-                          title="Revert to Pending"
+                          title={item.bill.isAutoPay ? "Turn off Auto Pay to revert this payment" : "Revert to Pending"}
                         >
                           <Undo2 className="h-4 w-4" />
                         </Button>
