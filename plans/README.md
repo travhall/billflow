@@ -549,5 +549,47 @@ path to what already existed.
 |------|-------|----------|--------|------|------------|--------|
 | 048  | Make the auto-pay revert block discoverable at click time, not hover time | P2 | S | LOW | 045 | DONE (the "Revert to Pending" button's `disabled={revertPending \|\| item.bill.isAutoPay}` in `dashboard.tsx` dropped the `item.bill.isAutoPay` clause, and its conditional `title` collapsed to the plain `"Revert to Pending"` string — every click now reaches the unmodified server guard and `useRevertPayment`'s unmodified `onError` toast from plan 045 instead of being pre-empted client-side; the "Auto" badge, `server/storage.ts`'s guard, and `use-payments.ts`'s hook were all confirmed untouched by `git status`/`grep`; `pnpm check` exits 0, `pnpm test` 9/9 pass (worktree needed a fresh `pnpm install` — `node_modules` was incomplete on checkout); manual test against a live `pnpm dev` + the real Neon DB (own dev server, alternate port 5051, since the owner's dev server already held 5050) confirmed all 5 observations — `USI: Internet (Erin Autopay)` marked paid then clicked while still auto-pay rendered a normal-weight "Revert to Pending" button (not grayed out) and clicking it produced the destructive "Couldn't revert payment" toast with the exact guard message while the row stayed on its paid cycle unchanged; turning off Auto Pay on that bill and clicking again succeeded with a "Reverted" toast; `RCU: Mortgage` (non-autopay) reverted exactly as before; the "Auto" badge stayed the unaffected persistent signal throughout; test-induced DB state (USI's Auto Pay flag, RCU's Sep 1 paid record) was restored afterward to match the pre-test values, modulo one cosmetic payment-row ID change (50→71) from the revert/re-mark-paid cycle regenerating RCU's Oct 1 pending row — functionally identical, not owner-visible; committed on branch `advisor/048-clickable-revert-with-error-toast`) |
 
+Merged to `main` (fast-forward, `e4429a5`) and its worktree/branch cleaned
+up same day.
+
+Re-run `/improve` against this repo in the future to catch anything new
+that's landed since this pass.
+
+## Seventeenth pass — 2026-09-04
+
+Full `/improve` audit, standard depth, per direct owner request. Scoped
+to what's changed since the last full audit (commit `e1609da`, third
+pass) — plans 036-048, a contained 10-file delta audited directly rather
+than via subagents, since this session already had first-hand context on
+every one of those files from writing the plans that produced them —
+plus a fresh security/deps sweep, which hadn't been re-checked since the
+third pass, and docs/direction, untouched since the very first pass.
+Found one real, actionable HIGH-severity finding (dependency
+vulnerabilities, newly disclosed/drifted since the third pass's clean
+audit) plus three lower-priority hardening/cleanup items. All 4 selected
+by the owner.
+
+| Plan | Title | Priority | Effort | Risk | Depends on | Status |
+|------|-------|----------|--------|------|------------|--------|
+| 049  | Fix 6 known vulnerabilities in transitive dependencies | P1 | S | LOW | — | TODO |
+| 050  | Deduplicate the oldest-unpaid-payment lookup in `getBillCycleStatus` | P3 | S | LOW | — | TODO |
+| 051  | Wrap `revertPayment` in a transaction | P3 | S | LOW | — | TODO |
+| 052  | Document the archive flag and cycle-status system in CLAUDE.md | P3 | S | LOW | — | TODO |
+
+All 4 are independent — no ordering constraints between them.
+
+### Findings considered and rejected (seventeenth pass)
+
+- Server routes returning `404` for non-"not found" errors (conflict/
+  validation errors funneled through the same catch-all pattern) —
+  real, pre-existing across the whole file (not introduced by recent
+  plans), cosmetic REST-semantics only. No real API consumer besides
+  this app's own frontend to be confused by it. Not worth a dedicated
+  plan.
+- `upcoming.tsx`'s within-month-column sort (chronological, not grouped
+  by status like the Dashboard's monthly table) — raised directly with
+  the owner as an open question, explicitly confirmed "fine as-is." Not
+  a finding.
+
 Re-run `/improve` against this repo in the future to catch anything new
 that's landed since this pass.
