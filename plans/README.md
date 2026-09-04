@@ -572,7 +572,7 @@ by the owner.
 | Plan | Title | Priority | Effort | Risk | Depends on | Status |
 |------|-------|----------|--------|------|------------|--------|
 | 049  | Fix 6 known vulnerabilities in transitive dependencies | P1 | S | LOW | — | TODO |
-| 050  | Deduplicate the oldest-unpaid-payment lookup in `getBillCycleStatus` | P3 | S | LOW | — | TODO |
+| 050  | Deduplicate the oldest-unpaid-payment lookup in `getBillCycleStatus` | P3 | S | LOW | — | DONE (extracted the shared `.filter(p => p.status !== "paid").sort(...)[0]` expression into a private `getOldestUnpaid` helper in `client/src/lib/bill-status.ts`, used by both the `paidForCurrentCycle` branch's `nextUnpaid` and the fallback `oldestUnpaid` lookup; drift check against `e4429a5` showed no changes to either in-scope or test file; `pnpm check` exits 0 and `pnpm test` 9/9 pass, unchanged from before this plan — worktree needed a fresh `pnpm install` (`vitest` binary missing) before either would run; `grep -n "function getOldestUnpaid"` → 1 match, `grep -c "sort((a, b) => new Date(a.dueDate).getTime()"` → 1 (was 2); only `client/src/lib/bill-status.ts` modified, `bill-status.test.ts` untouched; committed on branch `advisor/050-dedupe-oldest-unpaid-lookup`) |
 | 051  | Wrap `revertPayment` in a transaction | P3 | S | LOW | — | TODO |
 | 052  | Document the archive flag and cycle-status system in CLAUDE.md | P3 | S | LOW | — | TODO |
 
