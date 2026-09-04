@@ -439,5 +439,36 @@ preserving `resetPaymentRequest`'s other real caller
 |------|-------|----------|--------|------|------------|--------|
 | 044  | Make `resetPayment` idempotent and remove the redundant "Next Cycle" button | P1 | M | MED | — | DONE (`resetPayment` in `server/storage.ts` now returns any existing non-paid payment on the same bill instead of inserting another; the "Next Cycle" button, its `onResetCycle`/`resetPending` plumbing, and the now-unused `useResetPayment` hook removed from `dashboard.tsx`/`use-payments.ts`, `resetPaymentRequest` and its `mark-paid-dialog.tsx` caller left untouched and confirmed to still be the only other caller; `pnpm check` and `pnpm test` (8/8) both exit 0; manual test against a live `pnpm dev` + the real Neon DB confirmed the button is gone from the UI, marking a bill paid still creates its next-cycle row, `POST /api/payments/:id/reset` called 3× in a row on the same paid payment returns the identical pending row every time (no duplicates — the direct regression test for the originally observed bug), bills 24/25's existing 2027 rows were undisturbed, and a throwaway test bill exercising `mark-paid-dialog.tsx`'s create-then-reset flow ended with exactly one next-cycle row before being deleted; committed on branch `advisor/044-idempotent-reset-payment`) |
 
+Merged to `main` (fast-forward, `ca471f5`) and its worktree/branch cleaned
+up same day.
+
+Re-run `/improve` against this repo in the future to catch anything new
+that's landed since this pass.
+
+## Thirteenth pass — 2026-09-04
+
+Single targeted plan (`plan <description>` mode, no full audit). The
+owner reported "Revert to Pending" appearing to do nothing on
+`Mint Mobile: Erin` — a toast said "Reverted" but the row still showed
+"Paid". Live investigation (a throwaway non-autopay test bill first
+proved the mechanism itself works correctly, then checking the real
+Mint Mobile payments' `paidDate` timestamps) found the actual cause:
+`GET /api/payments` runs `processAutoPay()` on every request
+(`server/routes.ts:77-81`), and reverting an auto-pay bill's payment
+always produces exactly the state — pending + due date in the past —
+that auto-pay treats as "overdue, mark it paid." The revert's own
+success handler triggers the refetch that immediately undoes it,
+deterministically, for every auto-pay bill. A related gap surfaced
+alongside it: `useRevertPayment` discarded the server's error body and
+had no `onError` handler, so any revert failure — including this one —
+showed the user nothing. Plan 045 guards `revertPayment` against
+auto-pay bills server-side, fixes the client to actually surface that
+error, and disables the button with an explanatory tooltip so the
+conflict is discoverable before someone hits it.
+
+| Plan | Title | Priority | Effort | Risk | Depends on | Status |
+|------|-------|----------|--------|------|------------|--------|
+| 045  | Prevent auto-pay from silently undoing a payment revert | P1 | S | LOW | — | TODO |
+
 Re-run `/improve` against this repo in the future to catch anything new
 that's landed since this pass.
