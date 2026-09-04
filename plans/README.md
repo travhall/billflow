@@ -498,5 +498,30 @@ a row displays and what it counts as.
 |------|-------|----------|--------|------|------------|--------|
 | 046  | Show the next unpaid cycle instead of the stale paid row | P2 | M | MED | 040, 044 | DONE (`getBillCycleStatus` in `bill-status.ts` gained an optional `nextCycle` field on the `"paid"` branch, reusing the existing oldest-unpaid lookup; `bill-status.test.ts` extended with `nextCycle` assertions on the RCU-bug and yearly-bill tests plus a new test for the no-next-row edge case — one pre-existing test fixture (`payment id 31`'s ISO due-date string) had to be aligned with the file's established `T05:00:00.000Z`-for-local-midnight convention to make the new assertion pass, since the literal `T00:00:00.000Z` it had used was 5 hours off from every other fixture in the file; `dashboard.tsx`'s `BillStatusItem` type, `getUrgencyDisplay`, the Due Date/Amount cells, `sortData`'s `'date'`/`'amount'` cases, and the default monthly sort's tiebreak all now prefer `item.nextCycle` when present; `totalDue`/`totalPaid`/`totalPending`/`overdueCount`, the status filter pills, and the Actions column's `item.status === "paid"` gates were left untouched, confirmed unchanged by `git diff`/`grep`; `pnpm check` exits 0, `pnpm test` 9/9 pass; manual test against a live `pnpm dev` + the real Neon DB confirmed all 8 observations from the plan's test plan, most importantly the stats card regression check — `$3,035.28`/`94% Paid`/`$2,844.58 of $3,035.28`/`$190.70 Remaining` were byte-identical with the plan's dashboard.tsx swapped out for the pre-plan version and put back; the "Paid" filter pill still surfaces the same 6 now-"Next Cycle"-labeled bills; Due Date column sort (both directions) orders by the displayed next-cycle date, not the hidden real one; "Revert to Pending" still works for the 4 non-autopay paid bills and is replaced by the disabled "Turn off Auto Pay to revert this payment" tooltip for the 2 autopay ones (Mint Mobile: Travis/Erin), exactly as plan 045 left it; "Mark Paid" absent on all 6 "Next Cycle" rows; `USI: Internet`'s unpaid row unaffected; committed on branch `advisor/046-show-next-cycle-instead-of-paid-row`) |
 
+Merged to `main` (fast-forward, `231fd28`) and its worktree/branch cleaned
+up same day.
+
+Re-run `/improve` against this repo in the future to catch anything new
+that's landed since this pass.
+
+## Fifteenth pass — 2026-09-04
+
+Single targeted plan (`plan <description>` mode, no full audit). The
+owner asked for both tables to sort by due date by default; a clarifying
+question (given the monthly table's overdue-first grouping from plan 041
+was a deliberate, recent decision) narrowed it to a real bug plan 046
+introduced: the annual table's sort orders by `bill.dueMonth`/`dueDay`
+only, ignoring year — harmless before 046, but now a paid bill can
+display a next-cycle date a full year out, so e.g. a bill showing
+"Next Cycle — Jan 2027" sorted ahead of one still showing "Dec 2026"
+purely on month number. Plan 047 switches the annual table's default
+sort to the same `nextCycle`-aware full-date comparator already used
+elsewhere in this file since plan 046; the monthly table's grouping is
+explicitly untouched.
+
+| Plan | Title | Priority | Effort | Risk | Depends on | Status |
+|------|-------|----------|--------|------|------------|--------|
+| 047  | Sort the annual bills table by full date instead of month/day only | P2 | S | LOW | 046 | TODO |
+
 Re-run `/improve` against this repo in the future to catch anything new
 that's landed since this pass.
