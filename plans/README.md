@@ -470,5 +470,33 @@ conflict is discoverable before someone hits it.
 |------|-------|----------|--------|------|------------|--------|
 | 045  | Prevent auto-pay from silently undoing a payment revert | P1 | S | LOW | — | DONE (`revertPayment` in `server/storage.ts` now throws before any mutation when `bill.isAutoPay` is true; `useRevertPayment` in `use-payments.ts` reads the real error body and gained an `onError` toast instead of discarding every revert failure; the "Revert to Pending" button in `dashboard.tsx` is disabled with an explanatory tooltip for auto-pay bills; `pnpm check` and `pnpm test` (8/8) both exit 0; manual test against a live `pnpm dev` + the real Neon DB (on an alternate port, since the owner's own dev server already held 5050) confirmed: a throwaway auto-pay test bill's paid payment was rejected by a direct `curl` revert with the exact guard message and its status/paidDate left completely unchanged (the direct regression test — bypasses the disabled client button to prove the server-side guard, not just the UI, is the real enforcement); turning off Auto Pay on that bill let the revert succeed and it stayed reverted through a follow-up fetch; a second non-autopay test bill's revert still worked exactly as before (regression check); both test bills deleted afterward; the real `Mint Mobile: Travis`/`Mint Mobile: Erin` bills were confirmed untouched (`isAutoPay: true`, `archived: false`, unchanged) and their dashboard rows were separately observed live showing the new disabled button and tooltip; committed on branch `advisor/045-guard-revert-against-autopay-reclaim`) |
 
+Merged to `main` (fast-forward, `0bde9f8`) and its worktree/branch cleaned
+up same day.
+
+Re-run `/improve` against this repo in the future to catch anything new
+that's landed since this pass.
+
+## Fourteenth pass — 2026-09-04
+
+Single targeted plan (`plan <description>` mode, no full audit). The
+owner annotated a live screenshot directly asking for a display change:
+paid bills sitting in "Upcoming Monthly Bills"/"Annual Bills Overview"
+show their already-past due date — accurate but not useful; they want
+"what's next, not what's paid." This is compatible with, not a reversal
+of, plan 040's correctness fix: that fixed what `"paid"` *means* (feeds
+stats/filters), this plan changes what the *row* *displays* once that's
+true, reusing data plan 044 already guarantees exists (a paid bill
+always already has its next-cycle payment queued). `getBillCycleStatus`
+gains an optional `nextCycle` field, populated only in the `"paid"`
+branch; the Due Date/Amount/Status cells and both sort paths prefer it
+when present, while the stats totals, filter pills, and the Actions
+column's paid-gated buttons (Revert to Pending, Mark Paid) keep reading
+the real underlying fields, untouched — deliberately split between what
+a row displays and what it counts as.
+
+| Plan | Title | Priority | Effort | Risk | Depends on | Status |
+|------|-------|----------|--------|------|------------|--------|
+| 046  | Show the next unpaid cycle instead of the stale paid row | P2 | M | MED | 040, 044 | TODO |
+
 Re-run `/improve` against this repo in the future to catch anything new
 that's landed since this pass.
