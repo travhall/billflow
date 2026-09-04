@@ -574,7 +574,7 @@ by the owner.
 | 049  | Fix 6 known vulnerabilities in transitive dependencies | P1 | S | LOW | — | TODO |
 | 050  | Deduplicate the oldest-unpaid-payment lookup in `getBillCycleStatus` | P3 | S | LOW | — | TODO |
 | 051  | Wrap `revertPayment` in a transaction | P3 | S | LOW | — | TODO |
-| 052  | Document the archive flag and cycle-status system in CLAUDE.md | P3 | S | LOW | — | TODO |
+| 052  | Document the archive flag and cycle-status system in CLAUDE.md | P3 | S | LOW | — | DONE (drift check clean — `CLAUDE.md`, `client/src/lib/bill-status.ts`, `shared/schema.ts` all unchanged since the plan's `e4429a5` baseline; added one bullet to "Architecture" documenting `bill-status.ts`'s `getBillCycleStatus(bill, payments, today)` as the Dashboard's status source of truth plus `upcoming.tsx`'s deliberately separate month-grid logic, and three additions to "Data model" — `bills.archived` as a soft-delete that also removes the bill's unpaid payment, `resetPayment` auto-creating the next cycle's payment on mark-paid, and the Auto-Pay-on block on `revertPayment`; every claim cross-checked against the live `getBillCycleStatus`, `deleteBill`, `resetPayment`, `revertPayment`, and `upcoming.tsx` status logic before writing, all confirmed accurate; `git diff --stat` shows only `CLAUDE.md` changed; committed on branch `advisor/052-document-archive-and-cycle-status`) |
 
 All 4 are independent — no ordering constraints between them.
 
