@@ -523,5 +523,31 @@ explicitly untouched.
 |------|-------|----------|--------|------|------------|--------|
 | 047  | Sort the annual bills table by full date instead of month/day only | P2 | S | LOW | 046 | DONE (`annualBillStatuses.sort` in `dashboard.tsx` swapped its `bill.dueMonth`/`dueDay` comparator for the same `(item.nextCycle?.dueDate ?? item.dueDate).getTime()` pattern already used by the monthly table's default sort and `sortData`'s `'date'` case; `monthlyBillStatuses.sort` (plan 041's overdue-first grouping) left untouched, confirmed by `grep`/`git status` showing only `dashboard.tsx` modified; `pnpm check` exits 0, `pnpm test` 9/9 pass (worktree needed a fresh `pnpm install` — `node_modules` was incomplete on checkout); manual test against a live `pnpm dev` + the real Neon DB confirmed all 4 observations, most importantly the regression check — `Mint Mobile: Travis`/`Mint Mobile: Erin` (both showing "Next Cycle" dates in Jun 2027) now sort after every 2026-dated row including `Integrity: Home Insurance`'s Dec 19, 2026 row; Due Date column click (both directions) still orders correctly via `sortData`'s pre-existing `nextCycle`-aware case; monthly table order and the stats card/filter pills unaffected; committed on branch `advisor/047-annual-table-sort-by-full-date`) |
 
+Merged to `main` (fast-forward, `a59c890`) and its worktree/branch cleaned
+up same day.
+
+Re-run `/improve` against this repo in the future to catch anything new
+that's landed since this pass.
+
+## Sixteenth pass — 2026-09-04
+
+Single targeted plan (`plan <description>` mode, no full audit). The
+owner hit plan 045's auto-pay revert guard mid-troubleshooting — toggling
+a bill's Auto Pay checkbox while testing, lost track of its saved state,
+saw a grayed-out "Revert to Pending" icon with no visible explanation
+beyond a hover-only tooltip, and got stuck genuinely confused ("I cannot
+fix the USI: Internet bill... or am I missing something?"). Live-DB check
+confirmed the guard was working exactly as designed (`isAutoPay: true`)
+— not a bug, a discoverability gap. Plan 048 removes the client-side
+disabled gate entirely and lets every click attempt the revert — the
+server-side guard and its error-toast plumbing (both already built by
+plan 045) already surface the exact right explanation the moment someone
+actually tries, which turned out to need no new code, just an unblocked
+path to what already existed.
+
+| Plan | Title | Priority | Effort | Risk | Depends on | Status |
+|------|-------|----------|--------|------|------------|--------|
+| 048  | Make the auto-pay revert block discoverable at click time, not hover time | P2 | S | LOW | 045 | TODO |
+
 Re-run `/improve` against this repo in the future to catch anything new
 that's landed since this pass.
