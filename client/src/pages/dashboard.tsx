@@ -48,6 +48,7 @@ type BillStatusItem = {
   dueDate: Date;
   amount: string;
   paymentId: number | undefined;
+  nextCycle?: { dueDate: Date; amount: string };
 };
 
 function SortIcon({ column, sortConfig }: { column: string; sortConfig: SortConfig }) {
@@ -57,6 +58,9 @@ function SortIcon({ column, sortConfig }: { column: string; sortConfig: SortConf
 
 function getUrgencyDisplay(item: BillStatusItem): { label: string; className: string } {
   if (item.status === "paid") {
+    if (item.nextCycle) {
+      return { label: "Next Cycle", className: "text-muted-foreground bg-background border-border" };
+    }
     return { label: "Paid", className: "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-emerald-500/20" };
   }
   if (item.status === "overdue") {
@@ -196,10 +200,10 @@ function BillTable({
                   </Badge>
                 </TableCell>
                 <TableCell className="text-muted-foreground">
-                  {format(item.dueDate, item.bill.frequency === "yearly" ? "MMM d, yyyy" : "MMM d")}
+                  {format(item.nextCycle?.dueDate ?? item.dueDate, item.bill.frequency === "yearly" ? "MMM d, yyyy" : "MMM d")}
                 </TableCell>
                 <TableCell className="font-display font-bold text-foreground">
-                  {formatCurrency(Number(item.amount))}
+                  {formatCurrency(Number(item.nextCycle?.amount ?? item.amount))}
                 </TableCell>
                 <TableCell>
                   <Badge
@@ -337,12 +341,12 @@ export default function Dashboard() {
             valB = b.bill.category.toLowerCase();
             break;
           case 'date':
-            valA = a.dueDate.getTime();
-            valB = b.dueDate.getTime();
+            valA = (a.nextCycle?.dueDate ?? a.dueDate).getTime();
+            valB = (b.nextCycle?.dueDate ?? b.dueDate).getTime();
             break;
           case 'amount':
-            valA = Number(a.amount);
-            valB = Number(b.amount);
+            valA = Number(a.nextCycle?.amount ?? a.amount);
+            valB = Number(b.nextCycle?.amount ?? b.amount);
             break;
           case 'status':
             valA = a.status;
@@ -380,7 +384,7 @@ export default function Dashboard() {
     monthlyBillStatuses.sort((a, b) => {
       const priorityDiff = statusPriority[a.status] - statusPriority[b.status];
       if (priorityDiff !== 0) return priorityDiff;
-      return a.dueDate.getTime() - b.dueDate.getTime();
+      return (a.nextCycle?.dueDate ?? a.dueDate).getTime() - (b.nextCycle?.dueDate ?? b.dueDate).getTime();
     });
     annualBillStatuses.sort((a, b) => {
       const aMonth = a.bill.dueMonth || 0;
