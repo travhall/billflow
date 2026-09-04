@@ -191,6 +191,10 @@ export class DatabaseStorage implements IStorage {
     const [bill] = await db.select().from(bills).where(eq(bills.id, payment.billId));
     if (!bill) throw new Error("Bill not found");
 
+    if (bill.isAutoPay) {
+      throw new Error("Can't revert an Auto Pay bill's payment — turn off Auto Pay for this bill first, or it will be marked paid again automatically.");
+    }
+
     // If this payment was previously marked paid with "reset for next
     // cycle", resetPayment() inserted a fresh pending payment for the same
     // bill dated at the next cycle's due date. There is no direct link
