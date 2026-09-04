@@ -38,6 +38,12 @@ export type BillCycleStatus = {
  * surfaces a genuinely stale, still-overdue prior-cycle payment even if
  * no next-cycle row has been generated yet.
  */
+function getOldestUnpaid(payments: Payment[]): Payment | undefined {
+  return payments
+    .filter(p => p.status !== "paid")
+    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())[0];
+}
+
 export function getBillCycleStatus(bill: Bill, payments: Payment[], today: Date): BillCycleStatus {
   const billPayments = payments.filter(p => p.billId === bill.id);
   const isCurrentCycle = (dueDate: Date) =>
@@ -49,9 +55,7 @@ export function getBillCycleStatus(bill: Bill, payments: Payment[], today: Date)
     p => p.status === "paid" && isCurrentCycle(parseISO(p.dueDate as unknown as string))
   );
   if (paidForCurrentCycle) {
-    const nextUnpaid = billPayments
-      .filter(p => p.status !== "paid")
-      .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())[0];
+    const nextUnpaid = getOldestUnpaid(billPayments);
     return {
       status: "paid",
       dueDate: parseISO(paidForCurrentCycle.dueDate as unknown as string),
@@ -63,9 +67,7 @@ export function getBillCycleStatus(bill: Bill, payments: Payment[], today: Date)
     };
   }
 
-  const oldestUnpaid = billPayments
-    .filter(p => p.status !== "paid")
-    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())[0];
+  const oldestUnpaid = getOldestUnpaid(billPayments);
   if (oldestUnpaid) {
     const dueDate = parseISO(oldestUnpaid.dueDate as unknown as string);
     return {
