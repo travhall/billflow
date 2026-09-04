@@ -387,10 +387,9 @@ export default function Dashboard() {
       return (a.nextCycle?.dueDate ?? a.dueDate).getTime() - (b.nextCycle?.dueDate ?? b.dueDate).getTime();
     });
     annualBillStatuses.sort((a, b) => {
-      const aMonth = a.bill.dueMonth || 0;
-      const bMonth = b.bill.dueMonth || 0;
-      if (aMonth !== bMonth) return aMonth - bMonth;
-      return a.bill.dueDay - b.bill.dueDay;
+      const aDate = (a.nextCycle?.dueDate ?? a.dueDate).getTime();
+      const bDate = (b.nextCycle?.dueDate ?? b.dueDate).getTime();
+      return aDate - bDate;
     });
 
     const overdueBills = allBillStatuses.filter(item => item.status === "overdue");
