@@ -70,22 +70,6 @@ export async function resetPaymentRequest(paymentId: number): Promise<Payment> {
   return (await res.json()) as Payment;
 }
 
-export function useResetPayment() {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
-  return useMutation({
-    mutationFn: resetPaymentRequest,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [api.payments.list.path] });
-      toast({
-        title: "Success",
-        description: "Billing cycle reset for the next period.",
-      });
-    },
-  });
-}
-
 export function useRevertPayment() {
   const queryClient = useQueryClient();
   const { toast } = useToast();

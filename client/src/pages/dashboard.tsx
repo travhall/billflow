@@ -26,10 +26,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Archive, Edit2, RotateCcw, Undo2, AlertTriangle, X, CreditCard, FlaskConical, Bell, ChevronDown, Search } from "lucide-react";
+import { Archive, Edit2, Undo2, AlertTriangle, X, CreditCard, FlaskConical, Bell, ChevronDown, Search } from "lucide-react";
 import { sendTestNotification, getNotificationPermission, requestNotificationPermission } from "@/lib/notifications";
 import { useDeleteBill } from "@/hooks/use-bills";
-import { useResetPayment, useRevertPayment } from "@/hooks/use-payments";
+import { useRevertPayment } from "@/hooks/use-payments";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { formatCurrency } from "@/lib/utils";
 
@@ -80,9 +80,7 @@ interface BillTableProps {
   onShowHistory: (bill: Bill) => void;
   onDeleteBill: (id: number) => void;
   onMarkPaid: (bill: Bill, dueDate: Date, paymentId?: number) => void;
-  onResetCycle: (paymentId: number) => void;
   onRevertPayment: (paymentId: number) => void;
-  resetPending: boolean;
   revertPending: boolean;
 }
 
@@ -99,9 +97,7 @@ function BillTable({
   onShowHistory,
   onDeleteBill,
   onMarkPaid,
-  onResetCycle,
   onRevertPayment,
-  resetPending,
   revertPending,
 }: BillTableProps) {
   return (
@@ -261,16 +257,6 @@ function BillTable({
                         >
                           <Undo2 className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => onResetCycle(item.paymentId!)}
-                          disabled={resetPending}
-                          className="h-8 border-primary/20 hover:bg-primary/5 text-primary gap-2"
-                        >
-                          <RotateCcw className="h-3.5 w-3.5" />
-                          Next Cycle
-                        </Button>
                       </div>
                     )}
 
@@ -299,7 +285,6 @@ export default function Dashboard() {
   const { data: payments, isLoading: paymentsLoading } = usePayments();
   const { openDialog } = useMarkPaidDialog();
   const deleteBill = useDeleteBill();
-  const resetMutation = useResetPayment();
   const revertMutation = useRevertPayment();
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
   const [historyBill, setHistoryBill] = useState<Bill | null>(null);
@@ -627,9 +612,7 @@ export default function Dashboard() {
               onShowHistory={setHistoryBill}
               onDeleteBill={(id) => deleteBill.mutate(id)}
               onMarkPaid={openDialog}
-              onResetCycle={(id) => resetMutation.mutate(id)}
               onRevertPayment={(id) => revertMutation.mutate(id)}
-              resetPending={resetMutation.isPending}
               revertPending={revertMutation.isPending}
             />
             <BillTable
@@ -640,9 +623,7 @@ export default function Dashboard() {
               onShowHistory={setHistoryBill}
               onDeleteBill={(id) => deleteBill.mutate(id)}
               onMarkPaid={openDialog}
-              onResetCycle={(id) => resetMutation.mutate(id)}
               onRevertPayment={(id) => revertMutation.mutate(id)}
-              resetPending={resetMutation.isPending}
               revertPending={revertMutation.isPending}
             />
           </div>

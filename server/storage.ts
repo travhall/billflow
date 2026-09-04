@@ -149,6 +149,12 @@ export class DatabaseStorage implements IStorage {
     const [payment] = await executor.select().from(payments).where(eq(payments.id, id));
     if (!payment) throw new Error("Payment not found");
 
+    const [existingUnpaid] = await executor.select().from(payments)
+      .where(and(eq(payments.billId, payment.billId), ne(payments.status, "paid"), ne(payments.id, id)));
+    if (existingUnpaid) {
+      return existingUnpaid;
+    }
+
     const [bill] = await executor.select().from(bills).where(eq(bills.id, payment.billId));
     if (!bill) throw new Error("Bill not found");
 
