@@ -437,7 +437,7 @@ preserving `resetPaymentRequest`'s other real caller
 
 | Plan | Title | Priority | Effort | Risk | Depends on | Status |
 |------|-------|----------|--------|------|------------|--------|
-| 044  | Make `resetPayment` idempotent and remove the redundant "Next Cycle" button | P1 | M | MED | — | TODO |
+| 044  | Make `resetPayment` idempotent and remove the redundant "Next Cycle" button | P1 | M | MED | — | DONE (`resetPayment` in `server/storage.ts` now returns any existing non-paid payment on the same bill instead of inserting another; the "Next Cycle" button, its `onResetCycle`/`resetPending` plumbing, and the now-unused `useResetPayment` hook removed from `dashboard.tsx`/`use-payments.ts`, `resetPaymentRequest` and its `mark-paid-dialog.tsx` caller left untouched and confirmed to still be the only other caller; `pnpm check` and `pnpm test` (8/8) both exit 0; manual test against a live `pnpm dev` + the real Neon DB confirmed the button is gone from the UI, marking a bill paid still creates its next-cycle row, `POST /api/payments/:id/reset` called 3× in a row on the same paid payment returns the identical pending row every time (no duplicates — the direct regression test for the originally observed bug), bills 24/25's existing 2027 rows were undisturbed, and a throwaway test bill exercising `mark-paid-dialog.tsx`'s create-then-reset flow ended with exactly one next-cycle row before being deleted; committed on branch `advisor/044-idempotent-reset-payment`) |
 
 Re-run `/improve` against this repo in the future to catch anything new
 that's landed since this pass.
