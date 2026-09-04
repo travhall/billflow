@@ -79,7 +79,10 @@ export function useRevertPayment() {
       const res = await fetch(buildUrl("/api/payments/:id/revert", { id: paymentId }), {
         method: "POST",
       });
-      if (!res.ok) throw new Error("Failed to revert payment");
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to revert payment");
+      }
       return (await res.json()) as Payment;
     },
     onSuccess: () => {
@@ -87,6 +90,13 @@ export function useRevertPayment() {
       toast({
         title: "Reverted",
         description: "Payment has been marked as pending again.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn't revert payment",
+        description: error.message,
+        variant: "destructive",
       });
     },
   });
