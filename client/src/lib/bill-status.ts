@@ -7,6 +7,18 @@ export type BillCycleStatus = {
   dueDate: Date;
   amount: string;
   paymentId: number | undefined;
+  /**
+   * When `status` is `"paid"`, this bill's next (already-created, still
+   * unpaid) cycle payment — undefined only if none has been generated
+   * yet, which shouldn't normally happen for a paid bill (see plan 044)
+   * but is handled gracefully rather than assumed. Purely a display hint
+   * for callers that want to show "what's next" instead of the stale
+   * paid row — `status`/`dueDate`/`amount`/`paymentId` above always
+   * describe the real, current-cycle paid payment regardless of this
+   * field, and callers that need the true paid state (stats totals,
+   * filters, the auto-pay-revert guard) must keep reading those, not this.
+   */
+  nextCycle?: { dueDate: Date; amount: string };
 };
 
 /**
@@ -37,11 +49,17 @@ export function getBillCycleStatus(bill: Bill, payments: Payment[], today: Date)
     p => p.status === "paid" && isCurrentCycle(parseISO(p.dueDate as unknown as string))
   );
   if (paidForCurrentCycle) {
+    const nextUnpaid = billPayments
+      .filter(p => p.status !== "paid")
+      .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())[0];
     return {
       status: "paid",
       dueDate: parseISO(paidForCurrentCycle.dueDate as unknown as string),
       amount: paidForCurrentCycle.amount,
       paymentId: paidForCurrentCycle.id,
+      nextCycle: nextUnpaid
+        ? { dueDate: parseISO(nextUnpaid.dueDate as unknown as string), amount: nextUnpaid.amount }
+        : undefined,
     };
   }
 

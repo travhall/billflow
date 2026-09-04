@@ -42,6 +42,8 @@ describe("getBillCycleStatus", () => {
     const result = getBillCycleStatus(b, payments, new Date(2026, 8, 2)); // Sep 2, 2026
     expect(result.status).toBe("paid");
     expect(result.paymentId).toBe(2);
+    expect(result.nextCycle?.dueDate.getTime()).toBe(new Date(2026, 9, 1).getTime());
+    expect(result.nextCycle?.amount).toBe("100.00");
   });
 
   it("reports pending for an unpaid bill due later this cycle with no other payment rows", () => {
@@ -71,10 +73,20 @@ describe("getBillCycleStatus", () => {
     const b = bill({ id: 5, frequency: "yearly", dueMonth: 6, dueDay: 24 });
     const payments = [
       payment({ id: 30, billId: 5, dueDate: "2026-06-24T00:00:00.000Z" as unknown as Payment["dueDate"], status: "paid" }),
-      payment({ id: 31, billId: 5, dueDate: "2027-06-24T00:00:00.000Z" as unknown as Payment["dueDate"], status: "pending" }),
+      payment({ id: 31, billId: 5, dueDate: "2027-06-24T05:00:00.000Z" as unknown as Payment["dueDate"], status: "pending" }),
     ];
     const result = getBillCycleStatus(b, payments, new Date(2026, 8, 2));
     expect(result.status).toBe("paid");
     expect(result.paymentId).toBe(30);
+    expect(result.nextCycle?.dueDate.getTime()).toBe(new Date(2027, 5, 24).getTime());
+    expect(result.nextCycle?.amount).toBe("100.00");
+  });
+
+  it("leaves nextCycle undefined when a bill is paid but no next-cycle row has been created", () => {
+    const b = bill({ id: 6, dueDay: 1 });
+    const payments = [payment({ id: 40, billId: 6, dueDate: "2026-09-01T05:00:00.000Z" as unknown as Payment["dueDate"], status: "paid" })];
+    const result = getBillCycleStatus(b, payments, new Date(2026, 8, 2));
+    expect(result.status).toBe("paid");
+    expect(result.nextCycle).toBeUndefined();
   });
 });
