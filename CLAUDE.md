@@ -41,12 +41,14 @@ authentication by design — runs locally on the owner's machine.
 - `client/src/hooks/` — TanStack Query hooks, one per resource.
 - `client/src/pages/` — route-level components (dashboard, history, upcoming, analytics).
 - `client/src/components/` — shared UI; `components/ui/` is vendored shadcn/ui, not hand-maintained.
+- `client/src/lib/bill-status.ts` — `getBillCycleStatus(bill, payments, today)` is the single source of truth for a bill's current-cycle status on the Dashboard: `"paid"` (a payment covers the current cycle), `"overdue"`/`"pending"` (the oldest unpaid payment, before/after its due date), plus an optional `nextCycle` preview (the already-created next payment) shown once a bill is paid. `client/src/pages/upcoming.tsx` has its own independent, simpler status logic for its month-grid view — the two are deliberately not unified (different granularity needs).
 
 ## Data model
 
-- `bills`: recurring payment definitions (name, category, amount, frequency, due day/month, auto-pay, reminder settings).
-- `payments`: individual payment records per billing cycle, linked to a bill.
+- `bills`: recurring payment definitions (name, category, amount, frequency, due day/month, auto-pay, reminder settings). `archived` (boolean) soft-deletes a bill — "Delete" in the UI archives rather than destroys, preserving its payment history for History/Analytics. Archiving also removes that bill's not-yet-paid payment, if any.
+- `payments`: individual payment records per billing cycle, linked to a bill. When a payment is marked paid, the next cycle's payment is created automatically (`resetPayment` in `server/storage.ts`) — a bill's current-cycle paid record and its next unpaid one typically coexist.
 - `categoryBudgets`: optional monthly spending limit per category.
+- Reverting a paid payment back to pending (`revertPayment`) is blocked server-side for bills with Auto Pay on — Auto Pay would otherwise immediately re-claim it as overdue on the next request, silently undoing the revert. Turn off Auto Pay on the bill first.
 
 ## Backups
 
