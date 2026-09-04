@@ -408,5 +408,36 @@ this situation invites. Plan 043 fixes that one line.
 |------|-------|----------|--------|------|------------|--------|
 | 043  | Give each test notification a unique tag | P3 | S | LOW | — | DONE (`sendTestNotification`'s tag changed from literal `"billflow-test"` to `` `billflow-test-${Date.now()}` `` in `client/src/lib/notifications.ts`; `sendNotification` and its 3 real callers untouched; `pnpm check` exits 0; `pnpm test` 8/8 pass; live browser verification skipped — no browser available in this session with notification permission already granted for localhost) |
 
+Merged to `main` (fast-forward, `9d5bb21`) and its worktree/branch cleaned
+up same day. Owner separately resolved the actual notification-delivery
+issue themselves (macOS notification settings) — unrelated to this repo.
+
+Re-run `/improve` against this repo in the future to catch anything new
+that's landed since this pass.
+
+## Twelfth pass — 2026-09-03
+
+Single targeted plan (`plan <description>` mode, no full audit). While
+troubleshooting notifications, the owner asked what would happen clicking
+"Next Cycle" on an already-paid yearly bill — a genuine, well-aimed
+question that surfaced a real bug: `resetPayment` (`server/storage.ts`)
+unconditionally inserts a new next-cycle payment with no check for
+whether one already exists, and every paid bill already has one (created
+automatically by `markPaidAndReset` the moment it's marked paid) — so the
+button is always redundant, and clicking it always creates a duplicate.
+Confirmed live: the owner had in fact clicked it on `Mint Mobile: Travis`
+(bill 24) and `Mint Mobile: Erin` (bill 25), producing duplicate 2027
+payment rows for both (ids 56, 57) — deleted directly during this session
+(`DELETE /api/payments/56` and `/57`, both 204) to restore clean data.
+Plan 044 makes `resetPayment` idempotent (the real fix, protects every
+caller) and removes the now-provably-redundant "Next Cycle" button,
+including its now-dead client-side plumbing — while confirming and
+preserving `resetPaymentRequest`'s other real caller
+(`mark-paid-dialog.tsx`'s new-payment flow), which must not be touched.
+
+| Plan | Title | Priority | Effort | Risk | Depends on | Status |
+|------|-------|----------|--------|------|------------|--------|
+| 044  | Make `resetPayment` idempotent and remove the redundant "Next Cycle" button | P1 | M | MED | — | TODO |
+
 Re-run `/improve` against this repo in the future to catch anything new
 that's landed since this pass.
