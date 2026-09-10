@@ -19,12 +19,17 @@ function bill(overrides: Partial<Bill> = {}): Bill {
   };
 }
 
+// Fixture dates are local-time ISO strings (no "Z") throughout this file,
+// matching how `parseISO` and the `new Date(y, m, d)` assertions below both
+// resolve relative to whatever timezone the test runner happens to be in —
+// so equality checks hold regardless of that timezone, instead of only
+// passing on whichever machine's offset the fixture was hand-tuned for.
 function payment(overrides: Partial<Payment> = {}): Payment {
   return {
     id: 1,
     billId: 1,
     amount: "100.00",
-    dueDate: "2026-09-01T00:00:00.000Z" as unknown as Payment["dueDate"],
+    dueDate: "2026-09-01T00:00:00.000" as unknown as Payment["dueDate"],
     paidDate: null,
     status: "pending",
     notes: null,
@@ -36,8 +41,8 @@ describe("getBillCycleStatus", () => {
   it("reports paid when the current cycle is paid, even if a next-cycle payment already rolled over unpaid (the RCU: Mortgage bug)", () => {
     const b = bill({ id: 1, dueDay: 1 });
     const payments = [
-      payment({ id: 2, billId: 1, dueDate: "2026-09-01T05:00:00.000Z" as unknown as Payment["dueDate"], paidDate: "2026-08-24T00:00:00.000Z" as unknown as Payment["paidDate"], status: "paid" }),
-      payment({ id: 50, billId: 1, dueDate: "2026-10-01T05:00:00.000Z" as unknown as Payment["dueDate"], status: "pending" }),
+      payment({ id: 2, billId: 1, dueDate: "2026-09-01T00:00:00.000" as unknown as Payment["dueDate"], paidDate: "2026-08-24T00:00:00.000" as unknown as Payment["paidDate"], status: "paid" }),
+      payment({ id: 50, billId: 1, dueDate: "2026-10-01T00:00:00.000" as unknown as Payment["dueDate"], status: "pending" }),
     ];
     const result = getBillCycleStatus(b, payments, new Date(2026, 8, 2)); // Sep 2, 2026
     expect(result.status).toBe("paid");
@@ -48,14 +53,14 @@ describe("getBillCycleStatus", () => {
 
   it("reports pending for an unpaid bill due later this cycle with no other payment rows", () => {
     const b = bill({ id: 2, dueDay: 14 });
-    const payments = [payment({ id: 10, billId: 2, dueDate: "2026-09-14T00:00:00.000Z" as unknown as Payment["dueDate"], status: "pending" })];
+    const payments = [payment({ id: 10, billId: 2, dueDate: "2026-09-14T00:00:00.000" as unknown as Payment["dueDate"], status: "pending" })];
     const result = getBillCycleStatus(b, payments, new Date(2026, 8, 2));
     expect(result.status).toBe("pending");
   });
 
   it("reports overdue for a stale unpaid payment from a past cycle when no next-cycle row exists yet", () => {
     const b = bill({ id: 3, dueDay: 1 });
-    const payments = [payment({ id: 20, billId: 3, dueDate: "2026-09-01T05:00:00.000Z" as unknown as Payment["dueDate"], status: "pending" })];
+    const payments = [payment({ id: 20, billId: 3, dueDate: "2026-09-01T00:00:00.000" as unknown as Payment["dueDate"], status: "pending" })];
     const result = getBillCycleStatus(b, payments, new Date(2026, 9, 15)); // Oct 15, well past Sep 1
     expect(result.status).toBe("overdue");
     expect(result.dueDate.getMonth()).toBe(8); // still September, not silently reset to October
@@ -72,8 +77,8 @@ describe("getBillCycleStatus", () => {
   it("handles yearly bills the same way — paid this year despite a next-cycle row already existing", () => {
     const b = bill({ id: 5, frequency: "yearly", dueMonth: 6, dueDay: 24 });
     const payments = [
-      payment({ id: 30, billId: 5, dueDate: "2026-06-24T00:00:00.000Z" as unknown as Payment["dueDate"], status: "paid" }),
-      payment({ id: 31, billId: 5, dueDate: "2027-06-24T05:00:00.000Z" as unknown as Payment["dueDate"], status: "pending" }),
+      payment({ id: 30, billId: 5, dueDate: "2026-06-24T00:00:00.000" as unknown as Payment["dueDate"], status: "paid" }),
+      payment({ id: 31, billId: 5, dueDate: "2027-06-24T00:00:00.000" as unknown as Payment["dueDate"], status: "pending" }),
     ];
     const result = getBillCycleStatus(b, payments, new Date(2026, 8, 2));
     expect(result.status).toBe("paid");
@@ -84,7 +89,7 @@ describe("getBillCycleStatus", () => {
 
   it("leaves nextCycle undefined when a bill is paid but no next-cycle row has been created", () => {
     const b = bill({ id: 6, dueDay: 1 });
-    const payments = [payment({ id: 40, billId: 6, dueDate: "2026-09-01T05:00:00.000Z" as unknown as Payment["dueDate"], status: "paid" })];
+    const payments = [payment({ id: 40, billId: 6, dueDate: "2026-09-01T00:00:00.000" as unknown as Payment["dueDate"], status: "paid" })];
     const result = getBillCycleStatus(b, payments, new Date(2026, 8, 2));
     expect(result.status).toBe("paid");
     expect(result.nextCycle).toBeUndefined();
