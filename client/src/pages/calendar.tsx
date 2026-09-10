@@ -261,12 +261,17 @@ export default function CalendarPage() {
               const isPayday = paydays.some((p) => isSameDay(p, day));
               const inMonth = isSameMonth(day, monthDate);
 
+              const hasActivity = dayBills.length > 0 || isPayday;
+
               return (
                 <button
                   key={dayKey}
-                  onClick={() => setSelectedDate(day)}
+                  onClick={() => hasActivity && setSelectedDate(day)}
+                  disabled={!hasActivity}
                   className={clsx(
-                    "min-h-16 border-b border-r border-border p-1.5 text-left flex flex-col gap-1 transition-colors hover:bg-muted/30",
+                    "min-h-20 border-b border-r border-border p-1.5 text-left flex flex-col gap-1 transition-colors",
+                    hasActivity && "hover:bg-muted/30 cursor-pointer",
+                    !hasActivity && "cursor-default",
                     !inMonth && "bg-muted/10 text-muted-foreground/50",
                     isPayday && "bg-emerald-500/5"
                   )}
@@ -315,7 +320,7 @@ export default function CalendarPage() {
         <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
           {selectedDate && (
             <>
-              <SheetHeader>
+              <SheetHeader className="pt-2 pr-8">
                 <SheetTitle className="flex items-center gap-2">
                   {format(selectedDate, "EEEE, MMMM d")}
                   {paydays.some((p) => isSameDay(p, selectedDate)) && (
