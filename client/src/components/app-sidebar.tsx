@@ -1,6 +1,6 @@
 import { Sidebar, SidebarContent, SidebarHeader, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from "@/components/ui/sidebar"
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, History, Wallet, CalendarClock, BarChart2 } from "lucide-react";
+import { LayoutDashboard, History, Wallet, CalendarClock, CalendarDays, BarChart2 } from "lucide-react";
 import { clsx } from "clsx";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -16,6 +16,7 @@ export function AppSidebar() {
   const navItems = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard, prefetch: prefetchAll },
     { href: "/upcoming", label: "Upcoming", icon: CalendarClock, prefetch: prefetchAll },
+    { href: "/calendar", label: "Calendar", icon: CalendarDays, prefetch: prefetchAll },
     { href: "/history", label: "History", icon: History, prefetch: () => queryClient.prefetchQuery({ queryKey: ["/api/payments"] }) },
     { href: "/analytics", label: "Analytics", icon: BarChart2, prefetch: prefetchAll },
   ];

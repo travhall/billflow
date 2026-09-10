@@ -1,3 +1,43 @@
+export interface PayScheduleInput {
+  anchorDate: Date;
+  intervalDays: number;
+}
+
+/**
+ * Computes every payday occurrence that falls within the given month
+ * (0-indexed, matching `Date#getMonth`). Paydays are anchorDate + n *
+ * intervalDays for any integer n, so this walks both directions from the
+ * anchor rather than assuming the anchor precedes the target month.
+ */
+export function getPaydaysInMonth(schedule: PayScheduleInput, year: number, month: number): Date[] {
+  const monthStart = new Date(year, month, 1);
+  const monthEnd = new Date(year, month + 1, 1);
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const intervalMs = schedule.intervalDays * msPerDay;
+
+  const anchor = new Date(schedule.anchorDate.getFullYear(), schedule.anchorDate.getMonth(), schedule.anchorDate.getDate());
+
+  // Jump close to monthStart in one step, then walk day-by-day to land
+  // exactly on the schedule's cadence (avoids drift from a naive
+  // ms-based jump across DST transitions).
+  const roughSteps = Math.floor((monthStart.getTime() - anchor.getTime()) / intervalMs) - 1;
+  let candidate = new Date(anchor);
+  candidate.setDate(candidate.getDate() + roughSteps * schedule.intervalDays);
+  while (candidate.getTime() < monthStart.getTime()) {
+    candidate = new Date(candidate);
+    candidate.setDate(candidate.getDate() + schedule.intervalDays);
+  }
+
+  const paydays: Date[] = [];
+  while (candidate.getTime() < monthEnd.getTime()) {
+    paydays.push(new Date(candidate));
+    candidate = new Date(candidate);
+    candidate.setDate(candidate.getDate() + schedule.intervalDays);
+  }
+
+  return paydays;
+}
+
 export interface DueDateInput {
   frequency: "monthly" | "yearly";
   dueDay: number;

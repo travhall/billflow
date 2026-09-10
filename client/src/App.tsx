@@ -15,6 +15,7 @@ const Dashboard = lazy(() => import("@/pages/dashboard"));
 const History = lazy(() => import("@/pages/history"));
 const Upcoming = lazy(() => import("@/pages/upcoming"));
 const Analytics = lazy(() => import("@/pages/analytics"));
+const CalendarPage = lazy(() => import("@/pages/calendar"));
 
 function NotificationRunner() {
   const { data: bills } = useQuery<Bill[]>({ queryKey: ["/api/bills"] });
@@ -40,6 +41,7 @@ function Router() {
         <Route path="/" component={Dashboard} />
         <Route path="/history" component={History} />
         <Route path="/upcoming" component={Upcoming} />
+        <Route path="/calendar" component={CalendarPage} />
         <Route path="/analytics" component={Analytics} />
         <Route component={NotFound} />
       </Switch>

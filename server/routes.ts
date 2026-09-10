@@ -181,5 +181,24 @@ export async function registerRoutes(
     res.status(204).send();
   });
 
+  // Pay schedule
+  app.get(api.paySchedule.get.path, async (_req, res) => {
+    const schedule = await storage.getPaySchedule();
+    res.json(schedule ?? null);
+  });
+
+  app.put(api.paySchedule.upsert.path, async (req, res) => {
+    try {
+      const input = api.paySchedule.upsert.input.parse(req.body);
+      const schedule = await storage.upsertPaySchedule(input);
+      res.json(schedule);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.issues[0].message });
+      }
+      throw err;
+    }
+  });
+
   return httpServer;
 }
