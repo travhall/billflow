@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { clsx } from "clsx";
 import {
   addMonths,
@@ -66,10 +68,10 @@ type DayBill = { bill: Bill; amount: string; status: "paid" | "overdue" | "pendi
 
 function PayScheduleForm({
   initial,
-  onCancel,
+  onDone,
 }: {
   initial?: PaySchedule;
-  onCancel?: () => void;
+  onDone: () => void;
 }) {
   const [type, setType] = useState<"interval" | "monthly">(initial?.type ?? "interval");
   const [anchorDate, setAnchorDate] = useState(
@@ -90,7 +92,7 @@ function PayScheduleForm({
       if (!anchorDate || !Number.isFinite(interval) || interval <= 0) return;
       upsert.mutate(
         { type: "interval", anchorDate: new Date(`${anchorDate}T00:00:00`), intervalDays: Math.round(interval) },
-        { onSuccess: () => onCancel?.() }
+        { onSuccess: onDone }
       );
     } else {
       const days = daysOfMonth
@@ -98,12 +100,12 @@ function PayScheduleForm({
         .map((d) => Number(d.trim()))
         .filter((d) => Number.isFinite(d) && d >= 1 && d <= 31);
       if (days.length === 0) return;
-      upsert.mutate({ type: "monthly", daysOfMonth: days }, { onSuccess: () => onCancel?.() });
+      upsert.mutate({ type: "monthly", daysOfMonth: days }, { onSuccess: onDone });
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div className="flex gap-1.5">
         <Button type="button" size="sm" variant={type === "interval" ? "default" : "outline"} onClick={() => setType("interval")}>
           Every N days
@@ -123,19 +125,18 @@ function PayScheduleForm({
             <Label htmlFor="interval-days" className="text-xs">Days between paydays</Label>
             <Input id="interval-days" type="number" min={1} step={1} value={intervalDays} onChange={(e) => setIntervalDays(e.target.value)} className="w-28 h-8" required />
           </div>
-          <Button type="submit" size="sm" disabled={upsert.isPending}>{upsert.isPending ? "Saving…" : "Save"}</Button>
-          {onCancel && <Button type="button" size="sm" variant="outline" onClick={onCancel}>Cancel</Button>}
         </div>
       ) : (
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="space-y-1">
-            <Label htmlFor="days-of-month" className="text-xs">Day(s) of the month (comma-separated)</Label>
-            <Input id="days-of-month" type="text" placeholder="1, 15" value={daysOfMonth} onChange={(e) => setDaysOfMonth(e.target.value)} className="w-40 h-8" required />
-          </div>
-          <Button type="submit" size="sm" disabled={upsert.isPending}>{upsert.isPending ? "Saving…" : "Save"}</Button>
-          {onCancel && <Button type="button" size="sm" variant="outline" onClick={onCancel}>Cancel</Button>}
+        <div className="space-y-1">
+          <Label htmlFor="days-of-month" className="text-xs">Day(s) of the month (comma-separated)</Label>
+          <Input id="days-of-month" type="text" placeholder="1, 15" value={daysOfMonth} onChange={(e) => setDaysOfMonth(e.target.value)} className="w-40 h-8" required />
         </div>
       )}
+
+      <div className="flex justify-end gap-2 pt-2">
+        <Button type="button" variant="outline" onClick={onDone}>Cancel</Button>
+        <Button type="submit" disabled={upsert.isPending}>{upsert.isPending ? "Saving…" : "Save"}</Button>
+      </div>
     </form>
   );
 }
@@ -147,7 +148,7 @@ export default function CalendarPage() {
 
   const [monthDate, setMonthDate] = useState(() => startOfMonth(new Date()));
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [editingSchedule, setEditingSchedule] = useState(false);
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
 
   const paymentsByBillAndMonth = useMemo(() => {
     const map = new Map<string, Payment>();
@@ -222,19 +223,6 @@ export default function CalendarPage() {
           <h1 className="text-xl font-display font-bold text-foreground">Calendar</h1>
         </div>
 
-        {!schedule && !editingSchedule ? (
-          <div className="bg-card border border-border rounded-xl p-3 space-y-2">
-            <p className="text-xs text-muted-foreground">
-              Set your pay schedule to see paydays on the calendar.
-            </p>
-            <PayScheduleForm />
-          </div>
-        ) : editingSchedule ? (
-          <div className="bg-card border border-border rounded-xl p-3">
-            <PayScheduleForm initial={schedule ?? undefined} onCancel={() => setEditingSchedule(false)} />
-          </div>
-        ) : null}
-
         <div className="bg-card border border-border rounded-2xl overflow-hidden">
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
             <div className="flex items-center gap-2">
@@ -248,16 +236,14 @@ export default function CalendarPage() {
                 <ChevronRight className="h-3.5 w-3.5" />
               </Button>
             </div>
-            {schedule && !editingSchedule && (
-              <button
-                onClick={() => setEditingSchedule(true)}
-                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <DollarSign className="h-3 w-3 text-emerald-600" />
-                {describeSchedule(schedule)}
-                <Pencil className="h-3 w-3" />
-              </button>
-            )}
+            <button
+              onClick={() => setScheduleDialogOpen(true)}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <DollarSign className="h-3 w-3 text-emerald-600" />
+              {schedule ? describeSchedule(schedule) : "Set your pay schedule"}
+              <Pencil className="h-3 w-3" />
+            </button>
           </div>
 
           <div className="grid grid-cols-7 border-b border-border">
@@ -274,7 +260,6 @@ export default function CalendarPage() {
               const dayBills = billsByDay.get(dayKey) ?? [];
               const isPayday = paydays.some((p) => isSameDay(p, day));
               const inMonth = isSameMonth(day, monthDate);
-              const selected = selectedDate ? isSameDay(day, selectedDate) : false;
 
               return (
                 <button
@@ -283,8 +268,7 @@ export default function CalendarPage() {
                   className={clsx(
                     "min-h-16 border-b border-r border-border p-1.5 text-left flex flex-col gap-1 transition-colors hover:bg-muted/30",
                     !inMonth && "bg-muted/10 text-muted-foreground/50",
-                    selected && "bg-primary/10 ring-1 ring-inset ring-primary/40",
-                    isPayday && !selected && "bg-emerald-500/5"
+                    isPayday && "bg-emerald-500/5"
                   )}
                 >
                   <div className="flex items-center justify-between">
@@ -313,55 +297,70 @@ export default function CalendarPage() {
             })}
           </div>
         </div>
-
-        {selectedDate && (
-          <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-display font-bold text-foreground">
-                {format(selectedDate, "EEEE, MMMM d")}
-                {paydays.some((p) => isSameDay(p, selectedDate)) && (
-                  <Badge variant="outline" className="ml-2 bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
-                    Payday
-                  </Badge>
-                )}
-              </h3>
-              <Button variant="ghost" size="sm" onClick={() => setSelectedDate(null)}>
-                Close
-              </Button>
-            </div>
-            {selectedDayBills.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No bills due this day.</p>
-            ) : (
-              <div className="divide-y divide-border">
-                {selectedDayBills.map(({ bill, amount, status }) => (
-                  <div key={bill.id} className="flex items-center gap-3 py-3">
-                    <span
-                      className="h-2 w-2 rounded-full shrink-0"
-                      style={{ backgroundColor: getCategoryColor(bill.category) }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{bill.name}</p>
-                      <p className="text-xs text-muted-foreground">{bill.category}</p>
-                    </div>
-                    <p className="text-sm font-display font-bold text-foreground">{formatCurrency(Number(amount))}</p>
-                    <Badge
-                      variant="outline"
-                      className={clsx(
-                        "text-[10px] font-semibold capitalize h-4 px-1.5",
-                        status === "paid" && "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
-                        status === "overdue" && "bg-rose-500/10 text-rose-500 border-rose-500/20",
-                        status === "pending" && "bg-amber-500/10 text-amber-600 border-amber-500/20"
-                      )}
-                    >
-                      {status}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
       </div>
+
+      <Dialog open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Pay schedule</DialogTitle>
+            <DialogDescription>
+              We'll compute payday occurrences from this and mark them on the calendar.
+            </DialogDescription>
+          </DialogHeader>
+          <PayScheduleForm initial={schedule ?? undefined} onDone={() => setScheduleDialogOpen(false)} />
+        </DialogContent>
+      </Dialog>
+
+      <Sheet open={selectedDate !== null} onOpenChange={(open) => !open && setSelectedDate(null)}>
+        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+          {selectedDate && (
+            <>
+              <SheetHeader>
+                <SheetTitle className="flex items-center gap-2">
+                  {format(selectedDate, "EEEE, MMMM d")}
+                  {paydays.some((p) => isSameDay(p, selectedDate)) && (
+                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+                      Payday
+                    </Badge>
+                  )}
+                </SheetTitle>
+              </SheetHeader>
+              <div className="mt-4">
+                {selectedDayBills.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No bills due this day.</p>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {selectedDayBills.map(({ bill, amount, status }) => (
+                      <div key={bill.id} className="flex items-center gap-3 py-3">
+                        <span
+                          className="h-2 w-2 rounded-full shrink-0"
+                          style={{ backgroundColor: getCategoryColor(bill.category) }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{bill.name}</p>
+                          <p className="text-xs text-muted-foreground">{bill.category}</p>
+                        </div>
+                        <p className="text-sm font-display font-bold text-foreground">{formatCurrency(Number(amount))}</p>
+                        <Badge
+                          variant="outline"
+                          className={clsx(
+                            "text-[10px] font-semibold capitalize h-4 px-1.5",
+                            status === "paid" && "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
+                            status === "overdue" && "bg-rose-500/10 text-rose-500 border-rose-500/20",
+                            status === "pending" && "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                          )}
+                        >
+                          {status}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </Layout>
   );
 }
