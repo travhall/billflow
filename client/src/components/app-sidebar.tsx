@@ -1,4 +1,4 @@
-import { Sidebar, SidebarContent, SidebarHeader, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from "@/components/ui/sidebar"
+import { Sidebar, SidebarContent, SidebarHeader, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar"
 import { Link, useLocation } from "wouter";
 import { LayoutDashboard, History, Wallet, CalendarClock, CalendarDays, BarChart2 } from "lucide-react";
 import { clsx } from "clsx";
@@ -65,19 +65,6 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-
-      <SidebarFooter className="p-4 border-t border-sidebar-border bg-sidebar group-data-[collapsible=icon]:p-2">
-        <div className="bg-primary/10 rounded-xl p-4 text-foreground shadow-xl shadow-primary/5 relative overflow-hidden group/card cursor-pointer group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:aspect-square group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center">
-          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity" />
-          <div className="group-data-[collapsible=icon]:hidden">
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-1">Current Plan</p>
-            <p className="font-semibold">Pro</p>
-          </div>
-          <div className="hidden group-data-[collapsible=icon]:block">
-            <span className="text-[10px] font-bold">PRO</span>
-          </div>
-        </div>
-      </SidebarFooter>
     </Sidebar>
   );
 }

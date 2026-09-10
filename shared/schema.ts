@@ -15,15 +15,30 @@ export type InsertCategoryBudget = z.infer<typeof insertCategoryBudgetSchema>;
 
 // Singleton row for now (single-user app), but shaped with its own id so a
 // future multi-schedule case wouldn't need a schema migration.
+// "interval" recurs every intervalDays from anchorDate (e.g. every-other-
+// Friday); "monthly" recurs on fixed day(s) of the month (e.g. 1st and
+// 15th), which an interval count can't represent exactly.
 export const paySchedules = pgTable("pay_schedules", {
   id: serial("id").primaryKey(),
-  anchorDate: timestamp("anchor_date").notNull(), // one confirmed payday
-  intervalDays: integer("interval_days").notNull(), // 14 for biweekly
+  type: text("type", { enum: ["interval", "monthly"] }).notNull(),
+  anchorDate: timestamp("anchor_date"), // "interval" only: one confirmed payday
+  intervalDays: integer("interval_days"), // "interval" only: 14 for biweekly
+  daysOfMonth: integer("days_of_month").array(), // "monthly" only: e.g. [1, 15]
 });
 
 export const insertPayScheduleSchema = createInsertSchema(paySchedules, {
-  anchorDate: z.coerce.date(),
-}).omit({ id: true });
+  anchorDate: z.coerce.date().nullish(),
+})
+  .omit({ id: true })
+  .superRefine((data, ctx) => {
+    if (data.type === "interval") {
+      if (!data.anchorDate) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["anchorDate"], message: "anchorDate is required for interval schedules" });
+      if (!data.intervalDays || data.intervalDays < 1) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["intervalDays"], message: "intervalDays must be a positive number" });
+    } else if (data.type === "monthly") {
+      if (!data.daysOfMonth || data.daysOfMonth.length === 0) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["daysOfMonth"], message: "daysOfMonth must have at least one day" });
+      if (data.daysOfMonth?.some((d) => d < 1 || d > 31)) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["daysOfMonth"], message: "each day must be between 1 and 31" });
+    }
+  });
 export type PaySchedule = typeof paySchedules.$inferSelect;
 export type InsertPaySchedule = z.infer<typeof insertPayScheduleSchema>;
 

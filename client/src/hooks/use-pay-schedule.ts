@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@shared/routes";
+import type { InsertPaySchedule } from "@shared/schema";
 
 export function usePaySchedule() {
   return useQuery({
@@ -15,7 +16,7 @@ export function usePaySchedule() {
 export function useUpsertPaySchedule() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { anchorDate: Date; intervalDays: number }) => {
+    mutationFn: async (data: InsertPaySchedule) => {
       const res = await fetch(api.paySchedule.upsert.path, {
         method: api.paySchedule.upsert.method,
         headers: { "Content-Type": "application/json" },

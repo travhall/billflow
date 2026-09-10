@@ -3,7 +3,7 @@ import {
   bills, payments, categoryBudgets, paySchedules,
   type Bill, type InsertBill, type Payment, type InsertPayment,
   type UpdateBillRequest, type UpdatePaymentRequest,
-  type CategoryBudget, type PaySchedule,
+  type CategoryBudget, type PaySchedule, type InsertPaySchedule,
 } from "@shared/schema";
 import { eq, desc, inArray, and, ne } from "drizzle-orm";
 import { getNextCycleDueDate, getDueDateForMonth } from "@shared/date-utils";
@@ -32,7 +32,7 @@ export interface IStorage {
   deleteBudget(id: number): Promise<void>;
 
   getPaySchedule(): Promise<PaySchedule | undefined>;
-  upsertPaySchedule(schedule: { anchorDate: Date; intervalDays: number }): Promise<PaySchedule>;
+  upsertPaySchedule(schedule: InsertPaySchedule): Promise<PaySchedule>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -256,13 +256,21 @@ export class DatabaseStorage implements IStorage {
     return schedule;
   }
 
-  async upsertPaySchedule(schedule: { anchorDate: Date; intervalDays: number }): Promise<PaySchedule> {
+  async upsertPaySchedule(schedule: InsertPaySchedule): Promise<PaySchedule> {
+    // Null out the fields the other schedule type owns so switching types
+    // doesn't leave stale values behind (e.g. an old daysOfMonth surviving
+    // a switch to "interval").
+    const normalized: InsertPaySchedule =
+      schedule.type === "interval"
+        ? { type: "interval", anchorDate: schedule.anchorDate, intervalDays: schedule.intervalDays, daysOfMonth: null }
+        : { type: "monthly", daysOfMonth: schedule.daysOfMonth, anchorDate: null, intervalDays: null };
+
     const existing = await this.getPaySchedule();
     if (existing) {
-      const [updated] = await db.update(paySchedules).set(schedule).where(eq(paySchedules.id, existing.id)).returning();
+      const [updated] = await db.update(paySchedules).set(normalized).where(eq(paySchedules.id, existing.id)).returning();
       return updated;
     }
-    const [created] = await db.insert(paySchedules).values(schedule).returning();
+    const [created] = await db.insert(paySchedules).values(normalized).returning();
     return created;
   }
 }

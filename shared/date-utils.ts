@@ -1,15 +1,28 @@
-export interface PayScheduleInput {
-  anchorDate: Date;
-  intervalDays: number;
-}
+export type PayScheduleInput =
+  | { type: "interval"; anchorDate: Date; intervalDays: number }
+  | { type: "monthly"; daysOfMonth: number[] };
 
 /**
  * Computes every payday occurrence that falls within the given month
- * (0-indexed, matching `Date#getMonth`). Paydays are anchorDate + n *
- * intervalDays for any integer n, so this walks both directions from the
- * anchor rather than assuming the anchor precedes the target month.
+ * (0-indexed, matching `Date#getMonth`).
+ *
+ * "interval" schedules recur every N days from a confirmed anchor date
+ * (e.g. every-other-Friday) — paydays are anchorDate + n * intervalDays
+ * for any integer n, so this walks both directions from the anchor
+ * rather than assuming the anchor precedes the target month.
+ *
+ * "monthly" schedules recur on fixed day(s) of every month (e.g. 1st and
+ * 15th) — each day is clamped to the month's actual length, same as bill
+ * due dates in `getDueDateForMonth`.
  */
 export function getPaydaysInMonth(schedule: PayScheduleInput, year: number, month: number): Date[] {
+  if (schedule.type === "monthly") {
+    const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+    return schedule.daysOfMonth
+      .map((day) => new Date(year, month, Math.min(day, lastDayOfMonth)))
+      .sort((a, b) => a.getTime() - b.getTime());
+  }
+
   const monthStart = new Date(year, month, 1);
   const monthEnd = new Date(year, month + 1, 1);
   const msPerDay = 24 * 60 * 60 * 1000;
