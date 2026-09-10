@@ -578,6 +578,16 @@ by the owner.
 
 All 4 are independent — no ordering constraints between them.
 
+### Calendar view with payday marker
+
+| Plan | Title | Priority | Effort | Risk | Depends on | Status |
+|------|-------|----------|--------|------|------------|--------|
+| 053  | Calendar view with payday marker | P2 | M | LOW | — | DONE (added `paySchedules` table + `insertPayScheduleSchema` to `shared/schema.ts`, pushed via `pnpm db:push`; `getPaySchedule`/`upsertPaySchedule` in `server/storage.ts`, `GET`/`PUT /api/pay-schedule` handlers in `server/routes.ts`; `api.paySchedule.get`/`.upsert` added to `shared/routes.ts`'s typed contract; new `client/src/hooks/use-pay-schedule.ts` mirroring `use-budgets.ts`; new pure `getPaydaysInMonth(schedule, year, month)` in `shared/date-utils.ts` (alongside the existing `getDueDateForMonth`/`getNextCycleDueDate` per plan 001); new `client/src/pages/calendar.tsx` — month grid (built fresh, since `upcoming.tsx` only has a column-per-month layout, not a day grid, to reuse), category-colored dot markers per bill due date, a `$` payday marker on computed occurrences, a click-a-day panel with the same paid/overdue/pending `Badge` styling `upcoming.tsx` uses, and an inline first-run pay-schedule form (date + interval, default 14) plus an "Edit schedule" toggle for changing it later; route `/calendar` wired into `client/src/App.tsx`, nav link added to `client/src/components/app-sidebar.tsx`; `pnpm check` exits 0, no errors at all (baseline noted in plan 001 as ~41-42 pre-existing errors no longer applies — tree is now fully clean); manually verified via `pnpm dev` in the browser: bills render on the correct due dates including across the Sep/Oct month boundary, setting an anchor of 2026-09-04 (a Friday) with a 14-day interval placed `$` markers on Sep 4/18 and Oct 2/16/30 (all Fridays, correct cadence across the boundary), editing the schedule's interval to 7 immediately moved future markers to every Friday, and clicking a day opened the panel showing that day's bill with correct name/category/amount/status (and a payday day correctly showed the "Payday" badge with "No bills due this day"); out of scope per the plan — no pay-period bucketing, Dashboard budget card left untouched; committed on branch `advisor/053-calendar-view-with-payday-marker`) |
+
+Flag to user, per the plan's own note: now that a calendar view exists, is
+the Dashboard's "Total Monthly Budget" card still worth keeping, and if
+replaced, with what (if anything)?
+
 ### Findings considered and rejected (seventeenth pass)
 
 - Server routes returning `404` for non-"not found" errors (conflict/

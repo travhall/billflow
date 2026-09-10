@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertBillSchema, insertPaymentSchema, insertCategoryBudgetSchema, bills, payments, categoryBudgets } from './schema';
+import { insertBillSchema, insertPaymentSchema, insertCategoryBudgetSchema, insertPayScheduleSchema, bills, payments, categoryBudgets, paySchedules } from './schema';
 
 export const errorSchemas = {
   validation: z.object({
@@ -108,6 +108,24 @@ export const api = {
       responses: {
         204: z.void(),
         404: errorSchemas.notFound,
+      },
+    },
+  },
+  paySchedule: {
+    get: {
+      method: 'GET' as const,
+      path: '/api/pay-schedule',
+      responses: {
+        200: z.custom<typeof paySchedules.$inferSelect>().nullable(),
+      },
+    },
+    upsert: {
+      method: 'PUT' as const,
+      path: '/api/pay-schedule',
+      input: insertPayScheduleSchema,
+      responses: {
+        200: z.custom<typeof paySchedules.$inferSelect>(),
+        400: errorSchemas.validation,
       },
     },
   },

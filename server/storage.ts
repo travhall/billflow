@@ -1,9 +1,9 @@
 import { db } from "./db";
 import {
-  bills, payments, categoryBudgets,
+  bills, payments, categoryBudgets, paySchedules,
   type Bill, type InsertBill, type Payment, type InsertPayment,
   type UpdateBillRequest, type UpdatePaymentRequest,
-  type CategoryBudget,
+  type CategoryBudget, type PaySchedule,
 } from "@shared/schema";
 import { eq, desc, inArray, and, ne } from "drizzle-orm";
 import { getNextCycleDueDate, getDueDateForMonth } from "@shared/date-utils";
@@ -30,6 +30,9 @@ export interface IStorage {
   getBudgets(): Promise<CategoryBudget[]>;
   upsertBudget(category: string, monthlyLimit: string): Promise<CategoryBudget>;
   deleteBudget(id: number): Promise<void>;
+
+  getPaySchedule(): Promise<PaySchedule | undefined>;
+  upsertPaySchedule(schedule: { anchorDate: Date; intervalDays: number }): Promise<PaySchedule>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -246,6 +249,21 @@ export class DatabaseStorage implements IStorage {
 
   async deleteBudget(id: number): Promise<void> {
     await db.delete(categoryBudgets).where(eq(categoryBudgets.id, id));
+  }
+
+  async getPaySchedule(): Promise<PaySchedule | undefined> {
+    const [schedule] = await db.select().from(paySchedules).limit(1);
+    return schedule;
+  }
+
+  async upsertPaySchedule(schedule: { anchorDate: Date; intervalDays: number }): Promise<PaySchedule> {
+    const existing = await this.getPaySchedule();
+    if (existing) {
+      const [updated] = await db.update(paySchedules).set(schedule).where(eq(paySchedules.id, existing.id)).returning();
+      return updated;
+    }
+    const [created] = await db.insert(paySchedules).values(schedule).returning();
+    return created;
   }
 }
 

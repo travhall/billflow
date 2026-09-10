@@ -13,6 +13,20 @@ export const insertCategoryBudgetSchema = createInsertSchema(categoryBudgets).om
 export type CategoryBudget = typeof categoryBudgets.$inferSelect;
 export type InsertCategoryBudget = z.infer<typeof insertCategoryBudgetSchema>;
 
+// Singleton row for now (single-user app), but shaped with its own id so a
+// future multi-schedule case wouldn't need a schema migration.
+export const paySchedules = pgTable("pay_schedules", {
+  id: serial("id").primaryKey(),
+  anchorDate: timestamp("anchor_date").notNull(), // one confirmed payday
+  intervalDays: integer("interval_days").notNull(), // 14 for biweekly
+});
+
+export const insertPayScheduleSchema = createInsertSchema(paySchedules, {
+  anchorDate: z.coerce.date(),
+}).omit({ id: true });
+export type PaySchedule = typeof paySchedules.$inferSelect;
+export type InsertPaySchedule = z.infer<typeof insertPayScheduleSchema>;
+
 export const bills = pgTable("bills", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
