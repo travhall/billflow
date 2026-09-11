@@ -1,6 +1,6 @@
 import { differenceInDays, parseISO, setDate, startOfDay } from "date-fns";
 import type { Bill, Payment, CategoryBudget } from "@shared/schema";
-import { getDueDateForMonth } from "@shared/date-utils";
+import { getNextOccurrenceDueDate } from "@shared/date-utils";
 
 export type NotificationPermission = "granted" | "denied" | "default";
 
@@ -27,7 +27,7 @@ function sendNotification(title: string, body: string, tag: string) {
 }
 
 function getBillDueDate(bill: Bill, today: Date): Date {
-  const due = getDueDateForMonth(bill, today);
+  const due = getNextOccurrenceDueDate(bill, today);
   return due ?? setDate(startOfDay(new Date(today.getFullYear(), today.getMonth(), 1)), bill.dueDay);
 }
 

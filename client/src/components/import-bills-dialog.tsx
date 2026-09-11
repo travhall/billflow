@@ -49,6 +49,8 @@ export function ImportBillsDialog() {
         frequency: row.frequency,
         dueDay: row.dueDay,
         dueMonth: row.dueMonth,
+        intervalYears: row.intervalYears,
+        anchorYear: row.anchorYear,
         isAutoPay: row.isAutoPay,
         archived: false,
         reminderDays: null,
@@ -74,7 +76,8 @@ export function ImportBillsDialog() {
         <div className="bg-muted/40 p-6 border-b border-border">
           <DialogTitle className="text-xl font-display font-bold text-foreground">Import Bills from CSV</DialogTitle>
           <p className="text-sm text-muted-foreground mt-1">
-            Columns: Name, Category, Amount, Frequency, DueDay, DueMonth, AutoPay.
+            Columns: Name, Category, Amount, Frequency, DueDay, DueMonth, IntervalYears, AnchorYear, AutoPay.
+            IntervalYears/AnchorYear are optional and yearly-only — AnchorYear is required when IntervalYears &gt; 1.
           </p>
         </div>
 
@@ -122,7 +125,9 @@ export function ImportBillsDialog() {
                       <TableCell>{row.defaultAmount}</TableCell>
                       <TableCell className="capitalize">{row.frequency}</TableCell>
                       <TableCell>
-                        {row.frequency === "yearly" ? `${row.dueMonth}/${row.dueDay}` : row.dueDay}
+                        {row.frequency === "yearly"
+                          ? `${row.dueMonth}/${row.dueDay}${row.intervalYears && row.intervalYears > 1 ? ` (every ${row.intervalYears}y from ${row.anchorYear})` : ""}`
+                          : row.dueDay}
                       </TableCell>
                       <TableCell>{row.isAutoPay ? "Yes" : "No"}</TableCell>
                     </TableRow>

@@ -51,6 +51,8 @@ export const bills = pgTable("bills", {
   frequency: text("frequency", { enum: ["monthly", "yearly"] }).notNull(),
   dueDay: integer("due_day").notNull(), // 1-31
   dueMonth: integer("due_month"), // 1-12, used for yearly along with dueDay
+  intervalYears: integer("interval_years"), // yearly only: recur every N years (null/1 = every year)
+  anchorYear: integer("anchor_year"), // yearly only, required when intervalYears > 1: first occurrence year
   isAutoPay: boolean("is_auto_pay").default(false).notNull(),
   archived: boolean("archived").default(false).notNull(),
   reminderDays: integer("reminder_days"), // days before due date to send notification; null = no reminder
@@ -79,7 +81,10 @@ export const paymentsRelations = relations(payments, ({ one }) => ({
   }),
 }));
 
-export const insertBillSchema = createInsertSchema(bills).omit({ id: true });
+export const insertBillSchema = createInsertSchema(bills, {
+  intervalYears: z.coerce.number().int().min(1).nullish(),
+  anchorYear: z.coerce.number().int().min(1900).nullish(),
+}).omit({ id: true });
 export const insertPaymentSchema = createInsertSchema(payments, {
   dueDate: z.coerce.date(),
   paidDate: z.coerce.date(),

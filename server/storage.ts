@@ -55,7 +55,8 @@ export class DatabaseStorage implements IStorage {
     if (!updated) throw new Error("Bill not found");
 
     const amountChanged = updates.defaultAmount !== undefined;
-    const scheduleChanged = updates.dueDay !== undefined || updates.dueMonth !== undefined || updates.frequency !== undefined;
+    const scheduleChanged = updates.dueDay !== undefined || updates.dueMonth !== undefined || updates.frequency !== undefined
+      || updates.intervalYears !== undefined || updates.anchorYear !== undefined;
 
     // A not-yet-paid payment is just a preview generated from the bill's
     // amount/schedule — nothing has actually happened for that cycle yet,
@@ -162,7 +163,7 @@ export class DatabaseStorage implements IStorage {
     if (!bill) throw new Error("Bill not found");
 
     const currentDueDate = new Date(payment.dueDate);
-    const nextDueDate = getNextCycleDueDate(currentDueDate, bill.frequency);
+    const nextDueDate = getNextCycleDueDate(currentDueDate, bill.frequency, bill.intervalYears);
 
     const [newPayment] = await executor.insert(payments).values({
       billId: payment.billId,
@@ -206,7 +207,7 @@ export class DatabaseStorage implements IStorage {
       // the expected next due date, and remove it — mirroring what
       // TEST_PLAN.md:55 documents as the expected Undo behavior.
       const currentDueDate = new Date(payment.dueDate);
-      const expectedNextDueDate = getNextCycleDueDate(currentDueDate, bill.frequency);
+      const expectedNextDueDate = getNextCycleDueDate(currentDueDate, bill.frequency, bill.intervalYears);
 
       const candidateNextPayments = await tx.select().from(payments).where(
         and(

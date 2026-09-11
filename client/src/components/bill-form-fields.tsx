@@ -28,6 +28,7 @@ export function BillFormFields({
   onCorrectPaidPaymentChange,
 }: BillFormFieldsProps) {
   const frequency = form.watch("frequency");
+  const intervalYears = form.watch("intervalYears");
   const isVariable = form.watch("isVariable");
   const watchedAmount = form.watch("defaultAmount");
   const { toast } = useToast();
@@ -128,6 +129,42 @@ export function BillFormFields({
             <FormMessage />
           </FormItem>
         )} />
+      )}
+
+      {frequency === "yearly" && (
+        <div className="grid grid-cols-2 gap-4">
+          <FormField control={form.control} name="intervalYears" render={({ field }) => (
+            <FormItem>
+              <FormLabel>Every N Years</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  min={1}
+                  placeholder="1"
+                  value={field.value ?? ""}
+                  onChange={(e) => field.onChange(e.target.value === "" ? null : parseInt(e.target.value))}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+          {intervalYears > 1 && (
+            <FormField control={form.control} name="anchorYear" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Starting Year</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    placeholder={new Date().getFullYear().toString()}
+                    value={field.value ?? ""}
+                    onChange={(e) => field.onChange(e.target.value === "" ? null : parseInt(e.target.value))}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+          )}
+        </div>
       )}
 
       <FormField control={form.control} name="isAutoPay" render={({ field }) => (

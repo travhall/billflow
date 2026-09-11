@@ -5,6 +5,8 @@ export interface ParsedBillRow {
   frequency: "monthly" | "yearly";
   dueDay: number;
   dueMonth?: number;
+  intervalYears?: number;
+  anchorYear?: number;
   isAutoPay: boolean;
 }
 
@@ -37,6 +39,8 @@ export function parseBillsCSV(csvText: string): ParseResult {
     const frequency = get("frequency").toLowerCase();
     const dueDay = parseInt(get("dueday"), 10);
     const dueMonthRaw = get("duemonth");
+    const intervalYearsRaw = get("intervalyears");
+    const anchorYearRaw = get("anchoryear");
     const autoPayRaw = get("autopay").toLowerCase();
 
     if (!name || !category || !amount || (frequency !== "monthly" && frequency !== "yearly") || isNaN(dueDay) || dueDay < 1 || dueDay > 31) {
@@ -48,6 +52,24 @@ export function parseBillsCSV(csvText: string): ParseResult {
       continue;
     }
 
+    let intervalYears: number | undefined;
+    if (frequency === "yearly" && intervalYearsRaw) {
+      intervalYears = parseInt(intervalYearsRaw, 10);
+      if (isNaN(intervalYears) || intervalYears < 1) {
+        errors.push({ row: i + 1, message: `Bill "${name}" has an invalid IntervalYears` });
+        continue;
+      }
+    }
+
+    let anchorYear: number | undefined;
+    if (intervalYears && intervalYears > 1) {
+      anchorYear = parseInt(anchorYearRaw, 10);
+      if (!anchorYearRaw || isNaN(anchorYear)) {
+        errors.push({ row: i + 1, message: `Bill "${name}" recurs every ${intervalYears} years and needs a valid AnchorYear` });
+        continue;
+      }
+    }
+
     valid.push({
       name,
       category,
@@ -55,6 +77,8 @@ export function parseBillsCSV(csvText: string): ParseResult {
       frequency: frequency as "monthly" | "yearly",
       dueDay,
       dueMonth: frequency === "yearly" ? parseInt(dueMonthRaw, 10) : undefined,
+      intervalYears,
+      anchorYear,
       isAutoPay: autoPayRaw === "true" || autoPayRaw === "yes",
     });
   }

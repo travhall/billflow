@@ -29,6 +29,8 @@ const formSchema = insertBillSchema.extend({
   defaultAmount: z.string().min(1, "Amount is required"),
   dueDay: z.coerce.number().min(1).max(31),
   dueMonth: z.coerce.number().min(1).max(12).optional(),
+  intervalYears: z.coerce.number().min(1).nullable().optional(),
+  anchorYear: z.coerce.number().nullable().optional(),
   reminderDays: z.number().nullable().optional(),
 });
 
@@ -46,6 +48,8 @@ export function CreateBillDialog() {
       isVariable: false,
       frequency: "monthly",
       dueDay: 1,
+      intervalYears: null,
+      anchorYear: null,
       isAutoPay: false,
       archived: false,
       reminderDays: null,

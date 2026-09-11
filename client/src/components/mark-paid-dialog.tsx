@@ -174,7 +174,9 @@ export function MarkPaidDialog() {
                 Reset for next cycle
               </label>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Automatically queue the next {bill.frequency === "yearly" ? "annual" : "monthly"} payment
+                Automatically queue the next {bill.frequency === "yearly"
+                  ? (bill.intervalYears && bill.intervalYears > 1 ? `${bill.intervalYears}-year` : "annual")
+                  : "monthly"} payment
               </p>
             </div>
           </div>

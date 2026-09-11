@@ -44,6 +44,8 @@ export function EditBillDialog({ bill, trigger, currentPaidPayment }: EditBillDi
       frequency: bill.frequency,
       dueDay: bill.dueDay,
       dueMonth: bill.dueMonth,
+      intervalYears: bill.intervalYears,
+      anchorYear: bill.anchorYear,
       isAutoPay: bill.isAutoPay,
       archived: bill.archived,
       reminderDays: bill.reminderDays ?? null,

@@ -1,5 +1,5 @@
 import { isBefore, isSameMonth, isSameYear, parseISO, startOfMonth } from "date-fns";
-import { getDueDateForMonth } from "@shared/date-utils";
+import { getDueDateForMonth, getNextOccurrenceDueDate } from "@shared/date-utils";
 import type { Bill, Payment } from "@shared/schema";
 
 export type BillCycleStatus = {
@@ -46,10 +46,17 @@ function getOldestUnpaid(payments: Payment[]): Payment | undefined {
 
 export function getBillCycleStatus(bill: Bill, payments: Payment[], today: Date): BillCycleStatus {
   const billPayments = payments.filter(p => p.billId === bill.id);
-  const isCurrentCycle = (dueDate: Date) =>
-    bill.frequency === "monthly"
-      ? isSameMonth(dueDate, today) && isSameYear(dueDate, today)
-      : isSameYear(dueDate, today);
+  const isCurrentCycle = (dueDate: Date) => {
+    if (bill.frequency === "monthly") return isSameMonth(dueDate, today) && isSameYear(dueDate, today);
+    const interval = bill.intervalYears ?? 1;
+    if (interval <= 1) return isSameYear(dueDate, today);
+    // Multi-year bill: "current cycle" is the occurrence year covering
+    // today (the most recent anchor-aligned year <= today), since no new
+    // cycle starts until the next occurrence years later.
+    const anchor = bill.anchorYear ?? dueDate.getFullYear();
+    const currentOccurrenceYear = anchor + Math.floor((today.getFullYear() - anchor) / interval) * interval;
+    return dueDate.getFullYear() === currentOccurrenceYear;
+  };
 
   const paidForCurrentCycle = billPayments.find(
     p => p.status === "paid" && isCurrentCycle(parseISO(p.dueDate as unknown as string))
@@ -78,7 +85,7 @@ export function getBillCycleStatus(bill: Bill, payments: Payment[], today: Date)
     };
   }
 
-  const currentPeriodDueDate = getDueDateForMonth(bill, today) ?? startOfMonth(today);
+  const currentPeriodDueDate = getNextOccurrenceDueDate(bill, today) ?? startOfMonth(today);
   return {
     status: isBefore(currentPeriodDueDate, today) ? "overdue" : "pending",
     dueDate: currentPeriodDueDate,
