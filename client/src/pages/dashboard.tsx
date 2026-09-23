@@ -13,9 +13,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { clsx } from "clsx";
 import { type Bill } from "@shared/schema";
-import { startOfMonth, endOfMonth, isSameMonth, isSameYear, parseISO, isBefore, startOfDay, format } from "date-fns";
+import { startOfMonth, endOfMonth, parseISO, isBefore, startOfDay, format } from "date-fns";
 import { sumAmounts } from "@/lib/money";
-import { getBillCycleStatus } from "@/lib/bill-status";
+import { getBillCycleStatus, isDueSoon } from "@/lib/bill-status";
 import { useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
@@ -48,7 +48,8 @@ type BillStatusItem = {
   dueDate: Date;
   amount: string;
   paymentId: number | undefined;
-  nextCycle?: { dueDate: Date; amount: string };
+  nextCycle?: { dueDate: Date; amount: string; paymentId: number };
+  paidAhead?: { dueDate: Date; paymentId: number }[];
 };
 
 function SortIcon({ column, sortConfig }: { column: string; sortConfig: SortConfig }) {
@@ -57,23 +58,18 @@ function SortIcon({ column, sortConfig }: { column: string; sortConfig: SortConf
 }
 
 function getUrgencyDisplay(item: BillStatusItem): { label: string; className: string } {
+  const dueBadge = { label: "Due", className: "bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border-amber-500/20" };
+  const nextCycleBadge = { label: "Next Cycle", className: "text-muted-foreground bg-background border-border" };
   if (item.status === "paid") {
     if (item.nextCycle) {
-      return { label: "Next Cycle", className: "text-muted-foreground bg-background border-border" };
+      return isDueSoon(item.bill, item.nextCycle.dueDate, new Date()) ? dueBadge : nextCycleBadge;
     }
     return { label: "Paid", className: "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-emerald-500/20" };
   }
   if (item.status === "overdue") {
     return { label: "Overdue", className: "bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 border-rose-500/20" };
   }
-  const today = new Date();
-  const isCurrentCycle = item.bill.frequency === "monthly"
-    ? isSameMonth(item.dueDate, today) && isSameYear(item.dueDate, today)
-    : isSameYear(item.dueDate, today);
-  if (isCurrentCycle) {
-    return { label: "Due", className: "bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border-amber-500/20" };
-  }
-  return { label: "Next Cycle", className: "text-muted-foreground bg-background border-border" };
+  return isDueSoon(item.bill, item.dueDate, new Date()) ? dueBadge : nextCycleBadge;
 }
 
 interface BillTableProps {
@@ -179,7 +175,10 @@ function BillTable({
               </TableCell>
             </TableRow>
           ) : (
-            items.map((item) => (
+            items.map((item) => {
+              // Undo peels back the most recent payment: one paid ahead if any, else the current cycle's.
+              const latestPaidAhead = item.paidAhead?.[item.paidAhead.length - 1];
+              return (
               <TableRow key={item.bill.id} className="group hover:bg-muted/20 transition-colors border-border/50">
                 <TableCell className="pl-6 font-medium text-foreground">
                   <button
@@ -254,10 +253,10 @@ function BillTable({
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => onRevertPayment(item.paymentId!)}
+                          onClick={() => onRevertPayment(latestPaidAhead?.paymentId ?? item.paymentId!)}
                           disabled={revertPending}
                           className="h-8 w-8 text-muted-foreground hover:text-foreground no-default-hover-elevate"
-                          title="Revert to Pending"
+                          title={latestPaidAhead ? `Undo ${format(latestPaidAhead.dueDate, "MMM d")} payment` : "Revert to Pending"}
                         >
                           <Undo2 className="h-4 w-4" />
                         </Button>
@@ -273,10 +272,21 @@ function BillTable({
                         Mark Paid
                       </Button>
                     )}
+
+                    {item.status === "paid" && item.nextCycle && (
+                      <Button
+                        size="sm"
+                        onClick={() => onMarkPaid(item.bill, item.nextCycle!.dueDate, item.nextCycle!.paymentId)}
+                        className="bg-primary text-primary-foreground hover-elevate shadow-sm h-8 rounded-lg text-xs font-semibold px-3"
+                      >
+                        {isDueSoon(item.bill, item.nextCycle.dueDate, new Date()) ? "Mark Paid" : "Pay Ahead"}
+                      </Button>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>
-            ))
+              );
+            })
           )}
         </TableBody>
       </Table>

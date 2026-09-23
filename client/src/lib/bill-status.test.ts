@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getBillCycleStatus } from "./bill-status";
+import { getBillCycleStatus, isDueSoon } from "./bill-status";
 import type { Bill, Payment } from "@shared/schema";
 
 function bill(overrides: Partial<Bill> = {}): Bill {
@@ -93,5 +93,134 @@ describe("getBillCycleStatus", () => {
     const result = getBillCycleStatus(b, payments, new Date(2026, 8, 2));
     expect(result.status).toBe("paid");
     expect(result.nextCycle).toBeUndefined();
+  });
+});
+
+describe("getBillCycleStatus — paying ahead", () => {
+  const d = (iso: string) => `${iso}T00:00:00.000` as unknown as Payment["dueDate"];
+
+  it("exposes the next unpaid payment's id so it can be paid directly", () => {
+    const b = bill({ id: 7, dueDay: 1 });
+    const payments = [
+      payment({ id: 60, billId: 7, dueDate: d("2026-09-01"), status: "paid" }),
+      payment({ id: 61, billId: 7, dueDate: d("2026-10-01"), status: "pending" }),
+    ];
+    const result = getBillCycleStatus(b, payments, new Date(2026, 8, 23));
+    expect(result.nextCycle?.paymentId).toBe(61);
+  });
+
+  it("after paying October early in September, the row moves on to November while still reading paid", () => {
+    const b = bill({ id: 8, dueDay: 1 });
+    const payments = [
+      payment({ id: 70, billId: 8, dueDate: d("2026-09-01"), status: "paid" }),
+      payment({ id: 71, billId: 8, dueDate: d("2026-10-01"), status: "paid" }),
+      payment({ id: 72, billId: 8, dueDate: d("2026-11-01"), status: "pending" }),
+    ];
+    const result = getBillCycleStatus(b, payments, new Date(2026, 8, 23));
+    expect(result.status).toBe("paid");
+    expect(result.paymentId).toBe(70);
+    expect(result.nextCycle?.paymentId).toBe(72);
+    expect(result.nextCycle?.dueDate.getTime()).toBe(new Date(2026, 10, 1).getTime());
+  });
+
+  it("when October arrives, the pre-paid October payment is the current cycle and November is next", () => {
+    const b = bill({ id: 9, dueDay: 1 });
+    const payments = [
+      payment({ id: 80, billId: 9, dueDate: d("2026-09-01"), status: "paid" }),
+      payment({ id: 81, billId: 9, dueDate: d("2026-10-01"), status: "paid" }),
+      payment({ id: 82, billId: 9, dueDate: d("2026-11-01"), status: "pending" }),
+    ];
+    const result = getBillCycleStatus(b, payments, new Date(2026, 9, 2)); // Oct 2
+    expect(result.status).toBe("paid");
+    expect(result.paymentId).toBe(81);
+    expect(result.nextCycle?.paymentId).toBe(82);
+  });
+
+  it("paying two months ahead keeps queueing exactly one unpaid row", () => {
+    const b = bill({ id: 10, dueDay: 1 });
+    const payments = [
+      payment({ id: 90, billId: 10, dueDate: d("2026-09-01"), status: "paid" }),
+      payment({ id: 91, billId: 10, dueDate: d("2026-10-01"), status: "paid" }),
+      payment({ id: 92, billId: 10, dueDate: d("2026-11-01"), status: "paid" }),
+      payment({ id: 93, billId: 10, dueDate: d("2026-12-01"), status: "pending" }),
+    ];
+    const result = getBillCycleStatus(b, payments, new Date(2026, 8, 23));
+    expect(result.paymentId).toBe(90);
+    expect(result.nextCycle?.dueDate.getTime()).toBe(new Date(2026, 11, 1).getTime());
+  });
+});
+
+describe("getBillCycleStatus — paidAhead", () => {
+  const d = (iso: string) => `${iso}T00:00:00.000` as unknown as Payment["dueDate"];
+
+  it("is empty when nothing is paid beyond the current cycle", () => {
+    const b = bill({ id: 11, dueDay: 1 });
+    const payments = [
+      payment({ id: 100, billId: 11, dueDate: d("2026-08-01"), status: "paid" }),
+      payment({ id: 101, billId: 11, dueDate: d("2026-09-01"), status: "paid" }),
+      payment({ id: 102, billId: 11, dueDate: d("2026-10-01"), status: "pending" }),
+    ];
+    const result = getBillCycleStatus(b, payments, new Date(2026, 8, 23));
+    expect(result.paidAhead).toEqual([]); // Aug is history, not "ahead"
+  });
+
+  it("lists payments paid after the current cycle, oldest first, regardless of input order", () => {
+    const b = bill({ id: 12, dueDay: 1 });
+    const payments = [
+      payment({ id: 113, billId: 12, dueDate: d("2026-12-01"), status: "pending" }),
+      payment({ id: 112, billId: 12, dueDate: d("2026-11-01"), status: "paid" }),
+      payment({ id: 111, billId: 12, dueDate: d("2026-10-01"), status: "paid" }),
+      payment({ id: 110, billId: 12, dueDate: d("2026-09-01"), status: "paid" }),
+    ];
+    const result = getBillCycleStatus(b, payments, new Date(2026, 8, 23));
+    expect(result.paidAhead?.map(p => p.paymentId)).toEqual([111, 112]);
+    expect(result.paidAhead?.[1].dueDate.getTime()).toBe(new Date(2026, 10, 1).getTime());
+  });
+
+  it("is undefined when the bill isn't paid for the current cycle", () => {
+    const b = bill({ id: 13, dueDay: 25 });
+    const payments = [payment({ id: 120, billId: 13, dueDate: d("2026-09-25"), status: "pending" })];
+    const result = getBillCycleStatus(b, payments, new Date(2026, 8, 23));
+    expect(result.paidAhead).toBeUndefined();
+  });
+
+  it("tracks a yearly bill paid a year ahead", () => {
+    const b = bill({ id: 14, frequency: "yearly", dueMonth: 6, dueDay: 24 });
+    const payments = [
+      payment({ id: 130, billId: 14, dueDate: d("2026-06-24"), status: "paid" }),
+      payment({ id: 131, billId: 14, dueDate: d("2027-06-24"), status: "paid" }),
+      payment({ id: 132, billId: 14, dueDate: d("2028-06-24"), status: "pending" }),
+    ];
+    const result = getBillCycleStatus(b, payments, new Date(2026, 8, 23));
+    expect(result.paidAhead?.map(p => p.paymentId)).toEqual([131]);
+  });
+});
+
+describe("isDueSoon", () => {
+  const monthly = { frequency: "monthly" } as const;
+  const yearly = { frequency: "yearly" } as const;
+  const today = new Date(2026, 8, 23); // Sep 23
+
+  it("treats a due date later this month as due", () => {
+    expect(isDueSoon(monthly, new Date(2026, 8, 25), today)).toBe(true);
+  });
+
+  it("treats next month's due date within 7 days as due (Oct 1 is 8 days out, Sep 30 is 7)", () => {
+    expect(isDueSoon(monthly, new Date(2026, 9, 1), today)).toBe(false);
+    expect(isDueSoon(monthly, new Date(2026, 8, 30), today)).toBe(true);
+    expect(isDueSoon(monthly, new Date(2026, 9, 1), new Date(2026, 8, 24))).toBe(true);
+  });
+
+  it("keeps a further-out monthly due date as next cycle", () => {
+    expect(isDueSoon(monthly, new Date(2026, 9, 15), today)).toBe(false);
+  });
+
+  it("treats a yearly bill due later this year as current-cycle, but next year's as not due", () => {
+    expect(isDueSoon(yearly, new Date(2026, 11, 25), today)).toBe(true);
+    expect(isDueSoon(yearly, new Date(2027, 5, 24), today)).toBe(false);
+  });
+
+  it("counts a past due date as due", () => {
+    expect(isDueSoon(monthly, new Date(2026, 7, 20), today)).toBe(true);
   });
 });

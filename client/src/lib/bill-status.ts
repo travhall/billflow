@@ -1,4 +1,4 @@
-import { isBefore, isSameMonth, isSameYear, parseISO, startOfMonth } from "date-fns";
+import { differenceInCalendarDays, isBefore, isSameMonth, isSameYear, parseISO, startOfMonth } from "date-fns";
 import { getDueDateForMonth, getNextOccurrenceDueDate } from "@shared/date-utils";
 import type { Bill, Payment } from "@shared/schema";
 
@@ -18,7 +18,14 @@ export type BillCycleStatus = {
    * field, and callers that need the true paid state (stats totals,
    * filters, the auto-pay-revert guard) must keep reading those, not this.
    */
-  nextCycle?: { dueDate: Date; amount: string };
+  nextCycle?: { dueDate: Date; amount: string; paymentId: number };
+  /**
+   * When `status` is `"paid"`, payments already marked paid for cycles
+   * AFTER the current one (the owner paying a month or two out ahead),
+   * oldest first. Lets callers offer "undo" on the most recent one instead
+   * of only on the current-cycle payment. Empty when nothing is paid ahead.
+   */
+  paidAhead?: { dueDate: Date; paymentId: number }[];
 };
 
 /**
@@ -63,14 +70,20 @@ export function getBillCycleStatus(bill: Bill, payments: Payment[], today: Date)
   );
   if (paidForCurrentCycle) {
     const nextUnpaid = getOldestUnpaid(billPayments);
+    const currentDueDate = parseISO(paidForCurrentCycle.dueDate as unknown as string);
+    const paidAhead = billPayments
+      .filter(p => p.status === "paid" && parseISO(p.dueDate as unknown as string).getTime() > currentDueDate.getTime())
+      .map(p => ({ dueDate: parseISO(p.dueDate as unknown as string), paymentId: p.id }))
+      .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
     return {
       status: "paid",
-      dueDate: parseISO(paidForCurrentCycle.dueDate as unknown as string),
+      dueDate: currentDueDate,
       amount: paidForCurrentCycle.amount,
       paymentId: paidForCurrentCycle.id,
       nextCycle: nextUnpaid
-        ? { dueDate: parseISO(nextUnpaid.dueDate as unknown as string), amount: nextUnpaid.amount }
+        ? { dueDate: parseISO(nextUnpaid.dueDate as unknown as string), amount: nextUnpaid.amount, paymentId: nextUnpaid.id }
         : undefined,
+      paidAhead,
     };
   }
 
@@ -92,4 +105,21 @@ export function getBillCycleStatus(bill: Bill, payments: Payment[], today: Date)
     amount: bill.defaultAmount,
     paymentId: undefined,
   };
+}
+
+/** How many days ahead of a due date a bill starts reading as "Due" rather than "Next Cycle". */
+export const DUE_SOON_DAYS = 7;
+
+/**
+ * Whether a payment's due date is close enough to show as "Due" instead of
+ * "Next Cycle": it falls in the current billing cycle (this month for
+ * monthly bills, this year for yearly ones), or is at most `DUE_SOON_DAYS`
+ * away — so a bill due Oct 1 starts reading "Due" in late September
+ * instead of waiting for the calendar month to flip.
+ */
+export function isDueSoon(bill: Pick<Bill, "frequency">, dueDate: Date, today: Date): boolean {
+  const inCurrentCycle = bill.frequency === "monthly"
+    ? isSameMonth(dueDate, today) && isSameYear(dueDate, today)
+    : isSameYear(dueDate, today);
+  return inCurrentCycle || differenceInCalendarDays(dueDate, today) <= DUE_SOON_DAYS;
 }
