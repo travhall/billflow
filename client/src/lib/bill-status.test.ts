@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getBillCycleStatus, isDueSoon } from "./bill-status";
+import { getBillCycleStatus, isDueSoon, formatRelativeDue } from "./bill-status";
 import type { Bill, Payment } from "@shared/schema";
 
 function bill(overrides: Partial<Bill> = {}): Bill {
@@ -222,5 +222,30 @@ describe("isDueSoon", () => {
 
   it("counts a past due date as due", () => {
     expect(isDueSoon(monthly, new Date(2026, 7, 20), today)).toBe(true);
+  });
+});
+
+describe("formatRelativeDue", () => {
+  const today = new Date(2026, 8, 23); // Sep 23
+
+  it("reads today, tomorrow and yesterday in words", () => {
+    expect(formatRelativeDue(new Date(2026, 8, 23), today)).toBe("today");
+    expect(formatRelativeDue(new Date(2026, 8, 24), today)).toBe("tomorrow");
+    expect(formatRelativeDue(new Date(2026, 8, 22), today)).toBe("yesterday");
+  });
+
+  it("counts days ahead and behind", () => {
+    expect(formatRelativeDue(new Date(2026, 9, 1), today)).toBe("in 8 days");
+    expect(formatRelativeDue(new Date(2026, 8, 10), today)).toBe("13 days ago");
+  });
+
+  it("switches to months past 60 days", () => {
+    expect(formatRelativeDue(new Date(2026, 10, 22), today)).toBe("in 60 days");
+    expect(formatRelativeDue(new Date(2027, 5, 24), today)).toBe("in 9 months");
+    expect(formatRelativeDue(new Date(2026, 5, 24), today)).toBe("3 months ago");
+  });
+
+  it("is unaffected by time of day", () => {
+    expect(formatRelativeDue(new Date(2026, 9, 1, 0, 0), new Date(2026, 8, 23, 23, 30))).toBe("in 8 days");
   });
 });

@@ -1,4 +1,4 @@
-import { differenceInCalendarDays, isBefore, isSameMonth, isSameYear, parseISO, startOfMonth } from "date-fns";
+import { differenceInCalendarDays, differenceInCalendarMonths, isBefore, isSameMonth, isSameYear, parseISO, startOfMonth } from "date-fns";
 import { getDueDateForMonth, getNextOccurrenceDueDate } from "@shared/date-utils";
 import type { Bill, Payment } from "@shared/schema";
 
@@ -107,12 +107,12 @@ export function getBillCycleStatus(bill: Bill, payments: Payment[], today: Date)
   };
 }
 
-/** How many days ahead of a due date a bill starts reading as "Due" rather than "Next Cycle". */
+/** How many days ahead of a due date a bill starts reading as "Due" rather than "Upcoming". */
 export const DUE_SOON_DAYS = 7;
 
 /**
  * Whether a payment's due date is close enough to show as "Due" instead of
- * "Next Cycle": it falls in the current billing cycle (this month for
+ * "Upcoming": it falls in the current billing cycle (this month for
  * monthly bills, this year for yearly ones), or is at most `DUE_SOON_DAYS`
  * away — so a bill due Oct 1 starts reading "Due" in late September
  * instead of waiting for the calendar month to flip.
@@ -122,4 +122,22 @@ export function isDueSoon(bill: Pick<Bill, "frequency">, dueDate: Date, today: D
     ? isSameMonth(dueDate, today) && isSameYear(dueDate, today)
     : isSameYear(dueDate, today);
   return inCurrentCycle || differenceInCalendarDays(dueDate, today) <= DUE_SOON_DAYS;
+}
+
+/**
+ * Human-readable distance from `today` to a due date, e.g. "in 8 days",
+ * "tomorrow", "13 days ago". Switches to months past 60 days so a yearly
+ * bill reads "in 9 months" rather than "in 278 days".
+ */
+export function formatRelativeDue(dueDate: Date, today: Date): string {
+  const days = differenceInCalendarDays(dueDate, today);
+  if (days === 0) return "today";
+  if (days === 1) return "tomorrow";
+  if (days === -1) return "yesterday";
+  const ahead = days > 0;
+  const abs = Math.abs(days);
+  const amount = abs > 60
+    ? `${Math.abs(differenceInCalendarMonths(dueDate, today))} months`
+    : `${abs} days`;
+  return ahead ? `in ${amount}` : `${amount} ago`;
 }

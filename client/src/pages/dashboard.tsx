@@ -15,7 +15,7 @@ import { clsx } from "clsx";
 import { type Bill } from "@shared/schema";
 import { startOfMonth, endOfMonth, parseISO, isBefore, startOfDay, format } from "date-fns";
 import { sumAmounts } from "@/lib/money";
-import { getBillCycleStatus, isDueSoon } from "@/lib/bill-status";
+import { getBillCycleStatus, isDueSoon, formatRelativeDue } from "@/lib/bill-status";
 import { useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
@@ -59,17 +59,17 @@ function SortIcon({ column, sortConfig }: { column: string; sortConfig: SortConf
 
 function getUrgencyDisplay(item: BillStatusItem): { label: string; className: string } {
   const dueBadge = { label: "Due", className: "bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border-amber-500/20" };
-  const nextCycleBadge = { label: "Next Cycle", className: "text-muted-foreground bg-background border-border" };
+  const upcomingBadge = { label: "Upcoming", className: "text-muted-foreground bg-background border-border" };
   if (item.status === "paid") {
     if (item.nextCycle) {
-      return isDueSoon(item.bill, item.nextCycle.dueDate, new Date()) ? dueBadge : nextCycleBadge;
+      return isDueSoon(item.bill, item.nextCycle.dueDate, new Date()) ? dueBadge : upcomingBadge;
     }
     return { label: "Paid", className: "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-emerald-500/20" };
   }
   if (item.status === "overdue") {
     return { label: "Overdue", className: "bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 border-rose-500/20" };
   }
-  return isDueSoon(item.bill, item.dueDate, new Date()) ? dueBadge : nextCycleBadge;
+  return isDueSoon(item.bill, item.dueDate, new Date()) ? dueBadge : upcomingBadge;
 }
 
 interface BillTableProps {
@@ -178,6 +178,14 @@ function BillTable({
             items.map((item) => {
               // Undo peels back the most recent payment: one paid ahead if any, else the current cycle's.
               const latestPaidAhead = item.paidAhead?.[item.paidAhead.length - 1];
+              // The date/amount shown is the next payment's once the current cycle is paid.
+              const displayDueDate = item.nextCycle?.dueDate ?? item.dueDate;
+              const periodFormat = item.bill.frequency === "yearly" ? "yyyy" : "MMM";
+              const paidNote = item.status === "paid" && item.nextCycle
+                ? (latestPaidAhead
+                    ? `Paid through ${format(latestPaidAhead.dueDate, periodFormat)}`
+                    : `${format(item.dueDate, periodFormat)} paid`)
+                : null;
               return (
               <TableRow key={item.bill.id} className="group hover:bg-muted/20 transition-colors border-border/50">
                 <TableCell className="pl-6 font-medium text-foreground">
@@ -198,19 +206,27 @@ function BillTable({
                     {item.bill.category}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {format(item.nextCycle?.dueDate ?? item.dueDate, item.bill.frequency === "yearly" ? "MMM d, yyyy" : "MMM d")}
+                <TableCell className="text-muted-foreground whitespace-nowrap">
+                  {format(displayDueDate, item.bill.frequency === "yearly" ? "MMM d, yyyy" : "MMM d")}
+                  <span className={clsx("ml-1.5 text-xs", item.status === "overdue" ? "text-rose-500" : "text-muted-foreground/70")}>
+                    · {formatRelativeDue(displayDueDate, new Date())}
+                  </span>
                 </TableCell>
                 <TableCell className="font-display font-bold text-foreground">
                   {formatCurrency(Number(item.nextCycle?.amount ?? item.amount))}
                 </TableCell>
                 <TableCell>
-                  <Badge
-                    className={clsx("font-semibold", getUrgencyDisplay(item).className)}
-                    variant="outline"
-                  >
-                    {getUrgencyDisplay(item).label}
-                  </Badge>
+                  <div className="flex flex-col items-start gap-1">
+                    <Badge
+                      className={clsx("font-semibold", getUrgencyDisplay(item).className)}
+                      variant="outline"
+                    >
+                      {getUrgencyDisplay(item).label}
+                    </Badge>
+                    {paidNote && (
+                      <span className="text-xs text-muted-foreground">✓ {paidNote}</span>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell className="text-right pr-6">
                   <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -564,7 +580,7 @@ export default function Dashboard() {
                     : "bg-card text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
                 }`}
               >
-                {s === "all" ? "All" : s === "pending" ? "Unpaid" : s.charAt(0).toUpperCase() + s.slice(1)}
+                {s === "all" ? "All" : s === "pending" ? "Unpaid" : s === "paid" ? "Paid this month" : "Overdue"}
               </button>
             ))}
           </div>
