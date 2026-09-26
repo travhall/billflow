@@ -167,3 +167,59 @@ describe("revertPayment", () => {
     expect(await allPayments(bill.id)).toHaveLength(1);
   });
 });
+
+describe("bills with no payment rows yet", () => {
+  // processAutoPay/createBill read `new Date()`, so pin the clock to Sep 26
+  // (only Date is faked — PGlite needs real timers).
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 8, 26, 9, 0, 0));
+    return () => vi.useRealTimers();
+  });
+
+  it("createBill queues the first pending payment for the current cycle", async () => {
+    const bill = await storage.createBill({
+      name: "New Bill", category: "Education", defaultAmount: "528.00", frequency: "monthly", dueDay: 25,
+    });
+
+    const rows = await allPayments(bill.id);
+    expect(summarize(rows)).toEqual([[9, "pending"]]);
+    expect(new Date(rows[0].dueDate).getTime()).toBe(new Date(2026, 8, 25).getTime());
+    expect(rows[0].amount).toBe("528.00");
+  });
+
+  it("processAutoPay pays an Auto Pay bill that has no payment rows and whose due date passed", async () => {
+    const bill = await createBill({ isAutoPay: true, dueDay: 25, defaultAmount: "528.00" });
+
+    await storage.processAutoPay();
+
+    expect(summarize(await allPayments(bill.id))).toEqual([[9, "paid"], [10, "pending"]]);
+  });
+
+  it("processAutoPay queues, but does not pay, an Auto Pay bill that isn't due yet", async () => {
+    const bill = await createBill({ isAutoPay: true, dueDay: 28 });
+
+    await storage.processAutoPay();
+
+    expect(summarize(await allPayments(bill.id))).toEqual([[9, "pending"]]);
+  });
+
+  it("processAutoPay is idempotent for a bill with no payment rows", async () => {
+    const bill = await createBill({ isAutoPay: true, dueDay: 25 });
+
+    await storage.processAutoPay();
+    await storage.processAutoPay();
+
+    expect(summarize(await allPayments(bill.id))).toEqual([[9, "paid"], [10, "pending"]]);
+  });
+
+  it("processAutoPay leaves non-Auto-Pay and archived bills without payment rows alone", async () => {
+    const manual = await createBill({ isAutoPay: false, dueDay: 25 });
+    const archived = await createBill({ isAutoPay: true, dueDay: 25, archived: true });
+
+    await storage.processAutoPay();
+
+    expect(await allPayments(manual.id)).toHaveLength(0);
+    expect(await allPayments(archived.id)).toHaveLength(0);
+  });
+});

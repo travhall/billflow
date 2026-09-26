@@ -5,8 +5,11 @@ import {
   type UpdateBillRequest, type UpdatePaymentRequest,
   type CategoryBudget, type PaySchedule, type InsertPaySchedule,
 } from "@shared/schema";
-import { eq, desc, inArray, and, ne } from "drizzle-orm";
-import { getNextCycleDueDate, getDueDateForMonth } from "@shared/date-utils";
+import { eq, desc, inArray, and, ne, sql, notExists } from "drizzle-orm";
+import { getNextCycleDueDate, getDueDateForMonth, getNextOccurrenceDueDate } from "@shared/date-utils";
+
+// Arbitrary constant identifying the Auto Pay backfill in pg_advisory_xact_lock.
+const BACKFILL_LOCK_KEY = 5100;
 
 type Executor = Parameters<Parameters<typeof db.transaction>[0]>[0] | typeof db;
 
@@ -46,8 +49,45 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createBill(bill: InsertBill): Promise<Bill> {
-    const [newBill] = await db.insert(bills).values(bill).returning();
-    return newBill;
+    return await db.transaction(async (tx) => {
+      const [newBill] = await tx.insert(bills).values(bill).returning();
+      await this.queueFirstPayment(newBill, tx);
+      return newBill;
+    });
+  }
+
+  // A bill with no payment rows has no cycle for Auto Pay or the dashboard
+  // to act on (the dashboard would invent a status from the due date, and
+  // processAutoPay only scans real rows). Every bill therefore starts with
+  // its current cycle's pending payment. Returns null when the bill has no
+  // computable due date (e.g. a yearly bill missing its due month).
+  private async queueFirstPayment(bill: Bill, executor: Executor): Promise<Payment | null> {
+    const dueDate = getNextOccurrenceDueDate(bill, new Date());
+    if (!dueDate) return null;
+    const [payment] = await executor.insert(payments).values({
+      billId: bill.id,
+      amount: bill.defaultAmount,
+      dueDate,
+      status: "pending",
+    }).returning();
+    return payment;
+  }
+
+  // Bills created before createBill queued a first payment (or by any other
+  // path that skipped it) can be Auto Pay with no rows at all, which
+  // processAutoPay would never see. Give them their first payment so the
+  // normal overdue sweep below picks them up. The advisory lock serializes
+  // concurrent requests so two of them can't both queue one.
+  private async backfillAutoPayPayments(): Promise<void> {
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(${BACKFILL_LOCK_KEY})`);
+      const missing = await tx.select().from(bills).where(and(
+        eq(bills.isAutoPay, true),
+        eq(bills.archived, false),
+        notExists(tx.select({ one: sql`1` }).from(payments).where(eq(payments.billId, bills.id))),
+      ));
+      for (const bill of missing) await this.queueFirstPayment(bill, tx);
+    });
   }
 
   async updateBill(id: number, updates: UpdateBillRequest): Promise<Bill> {
@@ -97,6 +137,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async processAutoPay(): Promise<void> {
+    await this.backfillAutoPayPayments();
+
     const allPayments = await db.select().from(payments);
 
     const today = new Date();

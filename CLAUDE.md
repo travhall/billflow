@@ -47,6 +47,7 @@ authentication by design — runs locally on the owner's machine.
 
 - `bills`: recurring payment definitions (name, category, amount, frequency, due day/month, auto-pay, reminder settings). `archived` (boolean) soft-deletes a bill — "Delete" in the UI archives rather than destroys, preserving its payment history for History/Analytics. Archiving also removes that bill's not-yet-paid payment, if any.
 - `payments`: individual payment records per billing cycle, linked to a bill. When a payment is marked paid, the next cycle's payment is created automatically (`resetPayment` in `server/storage.ts`) — a bill's current-cycle paid record and its next unpaid one typically coexist.
+  `createBill` queues the bill's first pending payment, so a bill always has a payment row; `processAutoPay` also backfills one for any Auto Pay bill that has none (older bills) before its overdue sweep.
 - `categoryBudgets`: optional monthly spending limit per category.
 - Reverting a paid payment back to pending (`revertPayment`) is blocked server-side for bills with Auto Pay on — Auto Pay would otherwise immediately re-claim it as overdue on the next request, silently undoing the revert. Turn off Auto Pay on the bill first.
 
