@@ -36,6 +36,7 @@ export function MarkPaidDialog() {
 
   const [amount, setAmount] = useState("");
   const [paidDate, setPaidDate] = useState("");
+  const [confirmationNumber, setConfirmationNumber] = useState("");
   const [resetCycle, setResetCycle] = useState(true);
   const [isPending, setIsPending] = useState(false);
 
@@ -43,6 +44,7 @@ export function MarkPaidDialog() {
     if (isOpen && bill) {
       setAmount(bill.defaultAmount);
       setPaidDate(new Date().toISOString().split('T')[0]);
+      setConfirmationNumber("");
       setResetCycle(true);
     }
   }, [isOpen, bill]);
@@ -82,6 +84,7 @@ export function MarkPaidDialog() {
           paidDate: new Date(paidDate),
           status: "paid",
           notes: "",
+          confirmationNumber: confirmationNumber || null,
         });
         savedPaymentId = created.id;
 
@@ -96,6 +99,7 @@ export function MarkPaidDialog() {
           await markPaidAndResetRequest(savedPaymentId, {
             amount,
             paidDate: new Date(paidDate),
+            confirmationNumber: confirmationNumber || undefined,
           });
         } else {
           await updatePaymentRequest(savedPaymentId, {
@@ -103,6 +107,7 @@ export function MarkPaidDialog() {
             paidDate: new Date(paidDate),
             status: "paid",
             notes: "",
+            confirmationNumber: confirmationNumber || null,
           });
         }
       }
@@ -160,6 +165,17 @@ export function MarkPaidDialog() {
               className="rounded-xl"
               value={paidDate}
               onChange={(e) => setPaidDate(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="confirmation-number">Confirmation Number <span className="text-muted-foreground font-normal">(optional)</span></Label>
+            <Input
+              id="confirmation-number"
+              type="text"
+              className="rounded-xl"
+              value={confirmationNumber}
+              onChange={(e) => setConfirmationNumber(e.target.value)}
             />
           </div>
 

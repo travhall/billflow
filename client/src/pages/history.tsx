@@ -146,9 +146,14 @@ export default function History() {
                         {format(parseISO(payment.dueDate as unknown as string), "MMM d, yyyy")}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {payment.paidDate 
-                          ? format(parseISO(payment.paidDate as unknown as string), "MMM d, yyyy") 
+                        {payment.paidDate
+                          ? format(parseISO(payment.paidDate as unknown as string), "MMM d, yyyy")
                           : "—"}
+                        {payment.confirmationNumber && (
+                          <div className="text-xs text-muted-foreground/70">
+                            Conf# {payment.confirmationNumber}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell className="text-right font-display font-bold text-foreground">
                         {formatCurrency(Number(payment.amount))}

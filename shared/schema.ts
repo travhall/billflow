@@ -66,6 +66,7 @@ export const payments = pgTable("payments", {
   paidDate: timestamp("paid_date"),
   status: text("status", { enum: ["paid", "pending", "overdue"] }).default("pending").notNull(),
   notes: text("notes"),
+  confirmationNumber: text("confirmation_number"),
 }, (table) => ({
   dueDateIdx: index("payments_due_date_idx").on(table.dueDate),
 }));

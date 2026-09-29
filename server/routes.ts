@@ -140,6 +140,7 @@ export async function registerRoutes(
       const input = z.object({
         amount: z.string(),
         paidDate: z.coerce.date(),
+        confirmationNumber: z.string().optional(),
       }).parse(req.body);
       const result = await storage.markPaidAndReset(Number(req.params.id), input);
       res.json(result);

@@ -48,7 +48,7 @@ export async function updatePaymentRequest(id: number, data: Partial<InsertPayme
 
 export async function markPaidAndResetRequest(
   id: number,
-  data: { amount: string; paidDate: Date }
+  data: { amount: string; paidDate: Date; confirmationNumber?: string }
 ): Promise<{ paid: Payment; next: Payment }> {
   const res = await fetch(buildUrl("/api/payments/:id/mark-paid-and-reset", { id }), {
     method: "POST",
